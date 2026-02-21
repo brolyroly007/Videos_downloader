@@ -44,13 +44,14 @@ app = FastAPI(
 )
 
 # Configurar CORS para permitir el frontend React
+cors_origins = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:8000",
-    ],
+    allow_origins=[origin.strip() for origin in cors_origins],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -1524,13 +1525,17 @@ if __name__ == "__main__":
     for directory in ["downloads", "processed", "temp", "cookies", "static", "templates", "cache"]:
         Path(directory).mkdir(exist_ok=True)
 
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8000"))
+    debug = os.getenv("DEBUG", "false").lower() == "true"
+
     logger.info("Starting Viral Content Automation Dashboard...")
-    logger.info("Access the dashboard at: http://localhost:8000")
+    logger.info(f"Access the dashboard at: http://localhost:{port}")
 
     uvicorn.run(
         "app:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
+        host=host,
+        port=port,
+        reload=debug,
         log_level="info"
     )
