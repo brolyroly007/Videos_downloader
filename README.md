@@ -16,11 +16,13 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/brolyroly007/Videos_downloader/actions/workflows/ci.yml"><img src="https://github.com/brolyroly007/Videos_downloader/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/brolyroly007/Videos_downloader/actions/workflows/docker.yml"><img src="https://github.com/brolyroly007/Videos_downloader/actions/workflows/docker.yml/badge.svg" alt="Docker Build"></a>
   <img src="https://img.shields.io/badge/python-3.8%2B-blue?logo=python&logoColor=white" alt="Python 3.8+">
   <img src="https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white" alt="FastAPI">
   <img src="https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white" alt="Next.js 16">
   <img src="https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white" alt="Docker">
-  <img src="https://img.shields.io/badge/license-MIT-green" alt="License MIT">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License MIT"></a>
 </p>
 
 ---
@@ -117,15 +119,30 @@ Videos_downloader/
 ├── templates/
 │   └── index.html                  # Legacy Jinja2 dashboard
 │
+├── tests/                          # pytest test suite
+│   ├── test_api.py                 # API endpoint tests
+│   ├── test_downloader.py          # Downloader module tests
+│   ├── test_video_processor.py     # Video processor tests
+│   └── test_viral_detector.py      # Viral detector tests
+│
 ├── docs/                           # Additional documentation
 │   ├── COOKIES_GUIDE.md            # Cookie export instructions
 │   └── TIKTOK_TROUBLESHOOTING.md   # TikTok download solutions
 │
-└── scripts/                        # Utility scripts
-    ├── install.bat                 # Windows setup
-    ├── start.bat                   # Start backend
-    ├── start_all.bat               # Start all services
-    └── run.bat                     # Quick run
+├── scripts/                        # Utility scripts
+│   ├── install.sh / install.bat    # Setup script
+│   ├── run.sh / run.bat            # Start backend
+│   └── start_all.sh / start_all.bat # Start all services
+│
+├── .github/                        # GitHub configuration
+│   ├── workflows/ci.yml            # CI pipeline (lint + test)
+│   ├── workflows/docker.yml        # Docker build validation
+│   ├── ISSUE_TEMPLATE/             # Bug report & feature request
+│   └── PULL_REQUEST_TEMPLATE.md    # PR template
+│
+├── Makefile                        # Task runner (make test, make lint...)
+├── pyproject.toml                  # Project config, ruff, pytest
+└── .pre-commit-config.yaml         # Pre-commit hooks
 ```
 
 ## Quick Start

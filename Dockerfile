@@ -54,6 +54,11 @@ COPY . .
 # Crear directorios necesarios
 RUN mkdir -p downloads processed temp cookies cache static templates
 
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser -d /app appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
 # Exponer puerto
 EXPOSE 8000
 

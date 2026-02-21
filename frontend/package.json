@@ -1,6 +1,7 @@
 {
-  "name": "frontend",
-  "version": "0.1.0",
+  "name": "videos-downloader-frontend",
+  "version": "1.0.0",
+  "description": "Modern dashboard for the Videos Downloader automation platform",
   "private": true,
   "scripts": {
     "dev": "next dev",

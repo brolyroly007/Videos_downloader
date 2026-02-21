@@ -34,13 +34,13 @@ echo Iniciando servicios...
 echo.
 
 :: Iniciar Backend en una ventana
-start "Backend API" cmd /k "cd /d %~dp0 && python -m uvicorn app:app --reload --port 8000"
+start "Backend API" cmd /k "cd /d %~dp0.. && python -m uvicorn app:app --reload --port 8000"
 
 :: Esperar que el backend inicie
 timeout /t 3 /nobreak >nul
 
 :: Iniciar Frontend en otra ventana
-start "Frontend React" cmd /k "cd /d %~dp0\frontend && npm run dev"
+start "Frontend React" cmd /k "cd /d %~dp0..\frontend && npm run dev"
 
 echo.
 echo ========================================
