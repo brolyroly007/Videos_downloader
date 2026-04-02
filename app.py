@@ -13,6 +13,7 @@ from pathlib import Path
 import os
 import asyncio
 import uuid
+import time
 from typing import Optional
 import logging
 from pydantic import BaseModel
@@ -81,6 +82,21 @@ auth_manager = AuthManager(enabled=os.getenv("AUTH_ENABLED", "false").lower() ==
 
 # Diccionario para almacenar el estado de las tareas
 tasks_status = {}
+
+TASK_MAX_AGE_SECONDS = 24 * 60 * 60  # 24 hours
+
+
+def _cleanup_old_tasks():
+    """Remove tasks older than 24 hours to prevent memory leaks."""
+    now = time.time()
+    expired = [
+        tid for tid, tdata in tasks_status.items()
+        if now - tdata.get("created_at", now) > TASK_MAX_AGE_SECONDS
+    ]
+    for tid in expired:
+        del tasks_status[tid]
+    if expired:
+        logger.info(f"Cleaned up {len(expired)} expired tasks from tasks_status")
 
 
 # Modelos Pydantic
@@ -287,9 +303,11 @@ async def complete_flow_endpoint(request: CompleteFlowRequest, background_tasks:
     """Flujo completo: Descargar -> Procesar -> Subir"""
     try:
         task_id = str(uuid.uuid4())
+        _cleanup_old_tasks()
         tasks_status[task_id] = {
             "status": "started",
             "progress": "Downloading video...",
+            "created_at": time.time(),
             "data": {}
         }
 
@@ -835,11 +853,13 @@ async def auto_flow_endpoint(request: AutoFlowRequest, background_tasks: Backgro
     task_id = str(uuid.uuid4())
 
     try:
+        _cleanup_old_tasks()
         tasks_status[task_id] = {
             "status": "discovering",
             "progress": "Buscando videos virales...",
             "step": 1,
             "total_steps": 6 if request.auto_upload else 4,
+            "created_at": time.time(),
             "data": {}
         }
 
