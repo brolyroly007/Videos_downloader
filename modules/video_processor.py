@@ -4,6 +4,8 @@ Maneja el procesamiento de videos: re-enmarcado, efectos anti-copyright, mirrori
 """
 
 import os
+import subprocess
+import json
 import cv2
 import numpy as np
 # MoviePy 2.x API
@@ -16,6 +18,124 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+VALID_VIDEO_EXTENSIONS = {".mp4", ".webm", ".mkv", ".avi", ".mov"}
+DEFAULT_MAX_SIZE_MB = 500
+DEFAULT_MAX_DURATION_SECONDS = 30 * 60  # 30 minutes
+
+
+def validate_video(
+    file_path: str,
+    max_size_mb: float = DEFAULT_MAX_SIZE_MB,
+    max_duration_seconds: float = DEFAULT_MAX_DURATION_SECONDS,
+) -> Dict[str, any]:
+    """
+    Validate a video file before processing.
+
+    Checks file existence, size, extension, and uses ffprobe to verify
+    that a video stream exists and read codec/duration/resolution info.
+
+    Returns:
+        Dict with keys: duration, width, height, size_mb, codec
+
+    Raises:
+        ValueError: If validation fails for any reason.
+    """
+    path = Path(file_path)
+
+    # --- File exists and is readable ---
+    if not path.is_file():
+        raise ValueError(f"Video file not found: {file_path}")
+    if not os.access(file_path, os.R_OK):
+        raise ValueError(f"Video file is not readable: {file_path}")
+
+    # --- File size ---
+    size_bytes = path.stat().st_size
+    size_mb = size_bytes / (1024 * 1024)
+    if size_mb > max_size_mb:
+        raise ValueError(
+            f"Video file too large: {size_mb:.1f} MB (max {max_size_mb} MB)"
+        )
+
+    # --- Extension ---
+    ext = path.suffix.lower()
+    if ext not in VALID_VIDEO_EXTENSIONS:
+        raise ValueError(
+            f"Invalid video extension '{ext}'. "
+            f"Allowed: {', '.join(sorted(VALID_VIDEO_EXTENSIONS))}"
+        )
+
+    # --- ffprobe: video stream, duration, codec, resolution ---
+    try:
+        cmd = [
+            "ffprobe", "-v", "quiet",
+            "-print_format", "json",
+            "-show_streams", "-show_format",
+            str(path),
+        ]
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=30
+        )
+        if result.returncode != 0:
+            raise ValueError(
+                f"ffprobe failed for '{file_path}': {result.stderr.strip()}"
+            )
+        probe = json.loads(result.stdout)
+    except FileNotFoundError:
+        raise ValueError(
+            "ffprobe not found. Please install FFmpeg and ensure it is on PATH."
+        )
+    except subprocess.TimeoutExpired:
+        raise ValueError(f"ffprobe timed out while probing '{file_path}'")
+
+    # Find first video stream
+    video_stream = None
+    for stream in probe.get("streams", []):
+        if stream.get("codec_type") == "video":
+            video_stream = stream
+            break
+
+    if video_stream is None:
+        raise ValueError(
+            f"No video stream found in '{file_path}' (audio-only file?)"
+        )
+
+    # Extract info
+    width = int(video_stream.get("width", 0))
+    height = int(video_stream.get("height", 0))
+    codec = video_stream.get("codec_name", "unknown")
+
+    # Duration: prefer stream duration, fall back to format duration
+    duration = float(
+        video_stream.get("duration")
+        or probe.get("format", {}).get("duration")
+        or 0
+    )
+
+    if duration <= 0:
+        raise ValueError(f"Could not determine duration for '{file_path}'")
+
+    if duration > max_duration_seconds:
+        max_min = max_duration_seconds / 60
+        dur_min = duration / 60
+        raise ValueError(
+            f"Video too long: {dur_min:.1f} min (max {max_min:.0f} min)"
+        )
+
+    info = {
+        "duration": duration,
+        "width": width,
+        "height": height,
+        "size_mb": round(size_mb, 2),
+        "codec": codec,
+    }
+
+    logger.info(
+        f"Video validated: {path.name} | {codec} {width}x{height}, "
+        f"{duration:.1f}s, {size_mb:.1f} MB"
+    )
+    return info
 
 
 class VideoProcessor:
@@ -270,6 +390,13 @@ class VideoProcessor:
             Ruta del video procesado
         """
         try:
+            # Validate the input video before any processing
+            video_info = validate_video(video_path)
+            logger.info(
+                f"Starting processing for: {video_path} "
+                f"({video_info['codec']} {video_info['width']}x{video_info['height']})"
+            )
+
             current_video = video_path
             output_path = str(self.output_path / output_filename)
 
