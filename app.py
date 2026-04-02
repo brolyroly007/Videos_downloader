@@ -86,6 +86,32 @@ tasks_status = {}
 TASK_MAX_AGE_SECONDS = 24 * 60 * 60  # 24 hours
 
 
+# --- Structured error responses ---
+
+def _error_response(status_code: int, error_code: str, message: str, retryable: bool = False) -> JSONResponse:
+    """Return a structured JSON error response."""
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "error_code": error_code,
+            "message": message,
+            "retryable": retryable,
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch any unhandled exception and return a structured 500 response."""
+    logger.error(f"Unhandled exception on {request.method} {request.url.path}: {exc}", exc_info=True)
+    return _error_response(
+        status_code=500,
+        error_code="INTERNAL_ERROR",
+        message="An unexpected error occurred",
+        retryable=True,
+    )
+
+
 def _cleanup_old_tasks():
     """Remove tasks older than 24 hours to prevent memory leaks."""
     now = time.time()
@@ -185,9 +211,11 @@ async def download_video_endpoint(request: VideoDownloadRequest):
         else:
             raise HTTPException(status_code=400, detail=result.get('error', 'Unknown error'))
 
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error in download endpoint: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error in download endpoint: {e}", exc_info=True)
+        return _error_response(500, "DOWNLOAD_FAILED", f"Failed to download video: {e}", retryable=True)
 
 
 @app.post("/api/process")
@@ -262,9 +290,14 @@ async def process_video_endpoint(request: VideoProcessRequest):
             "data": result
         })
 
+    except HTTPException:
+        raise
+    except FileNotFoundError as e:
+        logger.error(f"File not found in process endpoint: {e}")
+        return _error_response(404, "FILE_NOT_FOUND", f"Video file not found: {e}", retryable=False)
     except Exception as e:
-        logger.error(f"Error in process endpoint: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error in process endpoint: {e}", exc_info=True)
+        return _error_response(500, "PROCESSING_FAILED", f"Failed to process video: {e}", retryable=True)
 
 
 @app.post("/api/upload")
@@ -293,9 +326,11 @@ async def upload_video_endpoint(request: UploadRequest):
         else:
             raise HTTPException(status_code=400, detail=result.get('error', 'Upload failed'))
 
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error in upload endpoint: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error in upload endpoint: {e}", exc_info=True)
+        return _error_response(500, "UPLOAD_FAILED", f"Failed to upload video: {e}", retryable=True)
 
 
 @app.post("/api/complete-flow")
@@ -404,13 +439,15 @@ async def complete_flow_endpoint(request: CompleteFlowRequest, background_tasks:
             "data": tasks_status[task_id]['data']
         })
 
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error in complete flow: {str(e)}")
+        logger.error(f"Error in complete flow: {e}", exc_info=True)
         tasks_status[task_id] = {
             "status": "failed",
             "error": str(e)
         }
-        raise HTTPException(status_code=500, detail=str(e))
+        return _error_response(500, "PROCESSING_FAILED", f"Complete flow failed: {e}", retryable=True)
 
 
 @app.get("/api/task/{task_id}")
@@ -429,7 +466,8 @@ async def get_video_info(url: str):
         result = downloader.get_video_info(url)
         return JSONResponse(result)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error getting video info: {e}", exc_info=True)
+        return _error_response(500, "INVALID_URL", f"Failed to get video info: {e}", retryable=False)
 
 
 @app.get("/api/files/downloads")
@@ -1032,15 +1070,15 @@ async def auto_flow_endpoint(request: AutoFlowRequest, background_tasks: Backgro
             "description": final_description
         })
 
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"[AutoFlow {task_id}] Error: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
+        logger.error(f"[AutoFlow {task_id}] Error: {e}", exc_info=True)
         tasks_status[task_id] = {
             "status": "error",
             "error": str(e)
         }
-        raise HTTPException(status_code=500, detail=str(e))
+        return _error_response(500, "PROCESSING_FAILED", f"Auto-flow failed: {e}", retryable=True)
 
 
 @app.post("/api/tiktok/login")
