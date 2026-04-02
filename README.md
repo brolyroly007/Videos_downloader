@@ -87,6 +87,15 @@
 - Trending hashtag detection and recommendation
 - AI-powered description generation (OpenAI GPT / local Ollama)
 
+### Reliability & Performance
+- **Download retry** &mdash; exponential backoff (3 retries) on transient network errors; permanent errors fail immediately
+- **Video validation** &mdash; checks file size (<500MB), duration (<30min), codec, and video stream before processing
+- **Concurrency limits** &mdash; max 3 simultaneous downloads, 2 processing jobs; excess requests get HTTP 429
+- **Progress tracking** &mdash; real-time download progress (%, speed, ETA) via task status polling
+- **Structured errors** &mdash; API returns error codes (`DOWNLOAD_FAILED`, `PROCESSING_FAILED`, etc.) with `retryable` flag
+- **Browser cleanup** &mdash; Playwright browsers always close on failure (centralized `finally` block)
+- **Task auto-cleanup** &mdash; completed tasks purged after 24 hours to prevent memory leaks
+
 ### Advanced Platform Features
 - **Job Queue System** &mdash; parallel processing with priority management (3 workers)
 - **Analytics Dashboard** &mdash; track views, likes, upload success rates
@@ -119,8 +128,9 @@ Videos_downloader/
 ├── docker-compose.yml              # Multi-service orchestration
 │
 ├── modules/                        # Core Python modules
-│   ├── downloader.py               # Multi-platform video download
-│   ├── video_processor.py          # Video effects & reframing
+│   ├── config.py                   # Retry & timeout configuration
+│   ├── downloader.py               # Multi-platform video download (with retry)
+│   ├── video_processor.py          # Video effects & reframing (with validation)
 │   ├── subtitle_generator.py       # Whisper AI transcription
 │   ├── uploader.py                 # TikTok upload automation
 │   ├── viral_detector.py           # Viral score analysis
@@ -295,6 +305,7 @@ To reset your session, click **"Clear Session"** in the dashboard.
 | `POST` | `/api/process` | Process a downloaded video |
 | `POST` | `/api/upload` | Upload to TikTok |
 | `POST` | `/api/complete-flow` | Full pipeline: download + process + upload |
+| `GET` | `/api/task/{id}` | Task status with download progress (%, speed, ETA) |
 
 ### Files
 
@@ -349,6 +360,11 @@ DEFAULT_FONT_SIZE=70
 DEFAULT_FONT_COLOR=yellow
 DEFAULT_STROKE_COLOR=black
 DEFAULT_STROKE_WIDTH=4
+
+# Download Reliability
+MAX_DOWNLOAD_RETRIES=3
+RETRY_BASE_DELAY=2.0
+DOWNLOAD_TIMEOUT=300
 
 # TikTok Upload
 TIKTOK_HEADLESS=false
