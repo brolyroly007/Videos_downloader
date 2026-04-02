@@ -85,6 +85,10 @@ tasks_status = {}
 
 TASK_MAX_AGE_SECONDS = 24 * 60 * 60  # 24 hours
 
+# --- Concurrency limiters ---
+_download_semaphore = asyncio.Semaphore(3)   # max 3 concurrent downloads
+_process_semaphore = asyncio.Semaphore(2)    # max 2 concurrent processing jobs
+
 
 # --- Structured error responses ---
 
@@ -198,29 +202,43 @@ async def get_info():
 @app.post("/api/download")
 async def download_video_endpoint(request: VideoDownloadRequest):
     """Descarga un video desde una URL"""
-    try:
-        logger.info(f"Downloading video from: {request.url}")
-        result = downloader.download(request.url, request.custom_filename)
+    if _download_semaphore.locked():
+        return _error_response(
+            429, "TOO_MANY_DOWNLOADS",
+            "Maximum concurrent downloads reached. Try again later.",
+            retryable=True,
+        )
+    async with _download_semaphore:
+        try:
+            logger.info(f"Downloading video from: {request.url}")
+            result = downloader.download(request.url, request.custom_filename)
 
-        if result['success']:
-            return JSONResponse({
-                "success": True,
-                "message": "Video downloaded successfully",
-                "data": result
-            })
-        else:
-            raise HTTPException(status_code=400, detail=result.get('error', 'Unknown error'))
+            if result['success']:
+                return JSONResponse({
+                    "success": True,
+                    "message": "Video downloaded successfully",
+                    "data": result
+                })
+            else:
+                raise HTTPException(status_code=400, detail=result.get('error', 'Unknown error'))
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error in download endpoint: {e}", exc_info=True)
-        return _error_response(500, "DOWNLOAD_FAILED", f"Failed to download video: {e}", retryable=True)
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error in download endpoint: {e}", exc_info=True)
+            return _error_response(500, "DOWNLOAD_FAILED", f"Failed to download video: {e}", retryable=True)
 
 
 @app.post("/api/process")
 async def process_video_endpoint(request: VideoProcessRequest):
     """Procesa un video con efectos y subtítulos"""
+    if _process_semaphore.locked():
+        return _error_response(
+            429, "TOO_MANY_PROCESSING",
+            "Maximum concurrent processing jobs reached. Try again later.",
+            retryable=True,
+        )
+    await _process_semaphore.acquire()
     try:
         logger.info(f"Processing video: {request.video_path}")
 
@@ -298,6 +316,8 @@ async def process_video_endpoint(request: VideoProcessRequest):
     except Exception as e:
         logger.error(f"Error in process endpoint: {e}", exc_info=True)
         return _error_response(500, "PROCESSING_FAILED", f"Failed to process video: {e}", retryable=True)
+    finally:
+        _process_semaphore.release()
 
 
 @app.post("/api/upload")
@@ -336,6 +356,19 @@ async def upload_video_endpoint(request: UploadRequest):
 @app.post("/api/complete-flow")
 async def complete_flow_endpoint(request: CompleteFlowRequest, background_tasks: BackgroundTasks):
     """Flujo completo: Descargar -> Procesar -> Subir"""
+    # Check capacity for both stages before starting
+    if _download_semaphore.locked():
+        return _error_response(
+            429, "TOO_MANY_DOWNLOADS",
+            "Maximum concurrent downloads reached. Try again later.",
+            retryable=True,
+        )
+    if _process_semaphore.locked():
+        return _error_response(
+            429, "TOO_MANY_PROCESSING",
+            "Maximum concurrent processing jobs reached. Try again later.",
+            retryable=True,
+        )
     try:
         task_id = str(uuid.uuid4())
         _cleanup_old_tasks()
@@ -350,14 +383,17 @@ async def complete_flow_endpoint(request: CompleteFlowRequest, background_tasks:
 
         # 1. Descargar video
         logger.info("Step 1: Downloading...")
+        await _download_semaphore.acquire()
+        try:
+            def _on_download_progress(info):
+                tasks_status[task_id]["download_progress"] = info
+                pct = info.get("percent", 0)
+                spd = info.get("speed_mb", 0)
+                tasks_status[task_id]["progress"] = f"Downloading... {pct}% ({spd} MB/s)"
 
-        def _on_download_progress(info):
-            tasks_status[task_id]["download_progress"] = info
-            pct = info.get("percent", 0)
-            spd = info.get("speed_mb", 0)
-            tasks_status[task_id]["progress"] = f"Downloading... {pct}% ({spd} MB/s)"
-
-        download_result = downloader.download(request.url, progress_callback=_on_download_progress)
+            download_result = downloader.download(request.url, progress_callback=_on_download_progress)
+        finally:
+            _download_semaphore.release()
 
         if not download_result['success']:
             tasks_status[task_id] = {
@@ -371,57 +407,61 @@ async def complete_flow_endpoint(request: CompleteFlowRequest, background_tasks:
 
         # 2. Procesar video
         logger.info("Step 2: Processing...")
-        bg_color = hex_to_rgb(request.background_color)
-        output_filename = f"processed_{Path(video_path).name}"
+        await _process_semaphore.acquire()
+        try:
+            bg_color = hex_to_rgb(request.background_color)
+            output_filename = f"processed_{Path(video_path).name}"
 
-        processed_video = processor.process_video(
-            video_path=video_path,
-            output_filename=output_filename,
-            reframe=request.reframe,
-            background_type=request.background_type,
-            background_color=bg_color,
-            apply_mirror=request.apply_mirror,
-            apply_speed=request.apply_speed,
-            speed_factor=request.speed_factor,
-            apply_color_adjust=True
-        )
-
-        tasks_status[task_id]['data']['processed_video'] = processed_video
-
-        # 3. Generar subtítulos (si se solicita)
-        if request.generate_subtitles:
-            tasks_status[task_id]['progress'] = "Generating subtitles..."
-            logger.info("Step 3: Generating subtitles...")
-
-            global subtitle_gen
-            if subtitle_gen is None:
-                subtitle_gen = SubtitleGenerator(model_size="base")
-
-            base_name = Path(output_filename).stem
-            video_with_subs = str(processor.output_path / f"{base_name}_with_subs.mp4")
-            srt_file = str(processor.output_path / f"{base_name}.srt")
-
-            sub_result = subtitle_gen.process_video_with_subtitles(
-                video_path=processed_video,
-                output_video_path=video_with_subs,
-                output_srt_path=srt_file,
-                language=request.subtitle_language,
-                burn_subs=request.burn_subtitles,
-                font_size=70,
-                font_color='yellow',
-                stroke_color='black',
-                stroke_width=4
+            processed_video = processor.process_video(
+                video_path=video_path,
+                output_filename=output_filename,
+                reframe=request.reframe,
+                background_type=request.background_type,
+                background_color=bg_color,
+                apply_mirror=request.apply_mirror,
+                apply_speed=request.apply_speed,
+                speed_factor=request.speed_factor,
+                apply_color_adjust=True
             )
 
-            final_video = sub_result['video_path'] if request.burn_subtitles else processed_video
-            tasks_status[task_id]['data'].update({
-                'final_video': final_video,
-                'srt_file': sub_result['srt_path'],
-                'transcription': sub_result['transcription']
-            })
-        else:
-            final_video = processed_video
-            tasks_status[task_id]['data']['final_video'] = final_video
+            tasks_status[task_id]['data']['processed_video'] = processed_video
+
+            # 3. Generar subtítulos (si se solicita)
+            if request.generate_subtitles:
+                tasks_status[task_id]['progress'] = "Generating subtitles..."
+                logger.info("Step 3: Generating subtitles...")
+
+                global subtitle_gen
+                if subtitle_gen is None:
+                    subtitle_gen = SubtitleGenerator(model_size="base")
+
+                base_name = Path(output_filename).stem
+                video_with_subs = str(processor.output_path / f"{base_name}_with_subs.mp4")
+                srt_file = str(processor.output_path / f"{base_name}.srt")
+
+                sub_result = subtitle_gen.process_video_with_subtitles(
+                    video_path=processed_video,
+                    output_video_path=video_with_subs,
+                    output_srt_path=srt_file,
+                    language=request.subtitle_language,
+                    burn_subs=request.burn_subtitles,
+                    font_size=70,
+                    font_color='yellow',
+                    stroke_color='black',
+                    stroke_width=4
+                )
+
+                final_video = sub_result['video_path'] if request.burn_subtitles else processed_video
+                tasks_status[task_id]['data'].update({
+                    'final_video': final_video,
+                    'srt_file': sub_result['srt_path'],
+                    'transcription': sub_result['transcription']
+                })
+            else:
+                final_video = processed_video
+                tasks_status[task_id]['data']['final_video'] = final_video
+        finally:
+            _process_semaphore.release()
 
         # 4. Subir a TikTok (si auto_upload está activado)
         if request.auto_upload:
