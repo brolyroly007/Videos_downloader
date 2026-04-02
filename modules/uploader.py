@@ -147,6 +147,7 @@ class TikTokUploader:
             Dict con el resultado de la operación
         """
         async with async_playwright() as p:
+            browser = None
             try:
                 # Iniciar navegador
                 logger.info("Starting browser...")
@@ -185,7 +186,6 @@ class TikTokUploader:
                     login_success = await self.wait_for_manual_login(page)
 
                     if not login_success:
-                        await browser.close()
                         return {
                             'success': False,
                             'error': 'Login failed or timed out'
@@ -244,75 +244,63 @@ class TikTokUploader:
 
                 # Buscar y hacer clic en el botón de publicar
                 logger.info("Looking for publish button...")
-                try:
-                    publish_selectors = [
-                        'button:has-text("Post")',
-                        'button:has-text("Publicar")',
-                        '[data-e2e="post-button"]',
-                        'button[type="submit"]'
+                publish_selectors = [
+                    'button:has-text("Post")',
+                    'button:has-text("Publicar")',
+                    '[data-e2e="post-button"]',
+                    'button[type="submit"]'
+                ]
+
+                publish_button = None
+                for selector in publish_selectors:
+                    try:
+                        publish_button = await page.wait_for_selector(selector, timeout=5000)
+                        if publish_button and await publish_button.is_visible():
+                            break
+                    except:
+                        continue
+
+                if publish_button:
+                    logger.info("Clicking publish button...")
+                    await publish_button.click()
+
+                    # Esperar confirmación
+                    logger.info("Waiting for upload confirmation...")
+                    await asyncio.sleep(5)
+
+                    # Verificar si apareció mensaje de éxito
+                    success_indicators = [
+                        'text="Your video is being uploaded"',
+                        'text="Tu video se está subiendo"',
+                        'text="Video uploaded successfully"',
+                        'text="Video subido exitosamente"'
                     ]
 
-                    publish_button = None
-                    for selector in publish_selectors:
+                    upload_success = False
+                    for indicator in success_indicators:
                         try:
-                            publish_button = await page.wait_for_selector(selector, timeout=5000)
-                            if publish_button and await publish_button.is_visible():
+                            element = await page.wait_for_selector(indicator, timeout=3000)
+                            if element:
+                                upload_success = True
                                 break
                         except:
                             continue
 
-                    if publish_button:
-                        logger.info("Clicking publish button...")
-                        await publish_button.click()
-
-                        # Esperar confirmación
-                        logger.info("Waiting for upload confirmation...")
-                        await asyncio.sleep(5)
-
-                        # Verificar si apareció mensaje de éxito
-                        success_indicators = [
-                            'text="Your video is being uploaded"',
-                            'text="Tu video se está subiendo"',
-                            'text="Video uploaded successfully"',
-                            'text="Video subido exitosamente"'
-                        ]
-
-                        upload_success = False
-                        for indicator in success_indicators:
-                            try:
-                                element = await page.wait_for_selector(indicator, timeout=3000)
-                                if element:
-                                    upload_success = True
-                                    break
-                            except:
-                                continue
-
-                        await browser.close()
-
-                        if upload_success:
-                            return {
-                                'success': True,
-                                'message': 'Video uploaded successfully to TikTok!'
-                            }
-                        else:
-                            return {
-                                'success': True,
-                                'message': 'Video upload initiated (confirmation pending)'
-                            }
-
-                    else:
-                        await browser.close()
+                    if upload_success:
                         return {
-                            'success': False,
-                            'error': 'Could not find publish button'
+                            'success': True,
+                            'message': 'Video uploaded successfully to TikTok!'
+                        }
+                    else:
+                        return {
+                            'success': True,
+                            'message': 'Video upload initiated (confirmation pending)'
                         }
 
-                except Exception as e:
-                    logger.error(f"Error clicking publish: {str(e)}")
-                    await browser.close()
+                else:
                     return {
                         'success': False,
-                        'error': f'Error during publish: {str(e)}'
+                        'error': 'Could not find publish button'
                     }
 
             except Exception as e:
@@ -321,6 +309,10 @@ class TikTokUploader:
                     'success': False,
                     'error': str(e)
                 }
+            finally:
+                if browser:
+                    await browser.close()
+                    logger.info("Browser closed")
 
     async def clear_session(self):
         """Elimina las cookies guardadas"""
