@@ -9,6 +9,7 @@ Probado y funcionando con yt-dlp 2025.11.12
 
 import os
 import re
+import random
 import subprocess
 import yt_dlp
 from pathlib import Path
@@ -18,8 +19,68 @@ import json
 import time
 import uuid
 
+from modules.config import MAX_DOWNLOAD_RETRIES, RETRY_BASE_DELAY, DOWNLOAD_TIMEOUT
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+# Error messages that indicate permanent failures (should NOT be retried)
+_PERMANENT_ERROR_PATTERNS = [
+    "is not a valid url",
+    "unsupported url",
+    "video unavailable",
+    "video not found",
+    "this video has been removed",
+    "private video",
+    "is not available",
+    "unable to extract",
+    "no video formats found",
+    "confirm your age",
+    "sign in",
+    "account required",
+]
+
+
+def _is_permanent_error(error: Exception) -> bool:
+    """Return True if the error is permanent and should NOT be retried."""
+    msg = str(error).lower()
+    return any(pattern in msg for pattern in _PERMANENT_ERROR_PATTERNS)
+
+
+def _retry_download(func):
+    """
+    Decorator that retries a download function with exponential backoff.
+
+    Retries up to MAX_DOWNLOAD_RETRIES times on transient errors.
+    Permanent errors (invalid URL, video not found) fail immediately.
+    Delay = RETRY_BASE_DELAY * 2^attempt + random jitter (0-1s).
+    """
+    def wrapper(*args, **kwargs):
+        last_exception = None
+        for attempt in range(MAX_DOWNLOAD_RETRIES):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                last_exception = e
+                if _is_permanent_error(e):
+                    logger.error(f"Permanent error, not retrying: {e}")
+                    raise
+
+                if attempt < MAX_DOWNLOAD_RETRIES - 1:
+                    delay = RETRY_BASE_DELAY * (2 ** attempt) + random.uniform(0, 1)
+                    logger.warning(
+                        f"Attempt {attempt + 1}/{MAX_DOWNLOAD_RETRIES} failed: {e}. "
+                        f"Retrying in {delay:.1f}s..."
+                    )
+                    time.sleep(delay)
+                else:
+                    logger.error(
+                        f"Attempt {attempt + 1}/{MAX_DOWNLOAD_RETRIES} failed: {e}. "
+                        f"No more retries."
+                    )
+        raise last_exception
+    return wrapper
 
 
 class VideoDownloader:
@@ -151,50 +212,8 @@ class VideoDownloader:
             filename = "%(id)s.%(ext)s"
 
         try:
-            ydl_opts = self._get_ydl_opts(platform, filename)
-
-            # Hook de progreso
-            def progress_hook(d):
-                if d['status'] == 'downloading':
-                    percent = d.get('_percent_str', 'N/A')
-                    speed = d.get('_speed_str', 'N/A')
-                    logger.info(f"Downloading: {percent} at {speed}")
-                elif d['status'] == 'finished':
-                    logger.info("Download completed, processing...")
-
-            ydl_opts['progress_hooks'] = [progress_hook]
-
-            # Descargar video
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                logger.info(f"Starting download from: {url}")
-                info = ydl.extract_info(url, download=True)
-
-                if info is None:
-                    raise Exception("Could not extract video information")
-
-                # Obtener nombre del archivo descargado
-                downloaded_filename = ydl.prepare_filename(info)
-
-                # Verificar que el archivo existe
-                if not os.path.exists(downloaded_filename):
-                    # Buscar el archivo más reciente en downloads
-                    downloaded_filename = self._find_latest_download()
-
-                video_info = {
-                    'success': True,
-                    'title': info.get('title', 'Unknown'),
-                    'duration': info.get('duration', 0),
-                    'platform': platform,
-                    'width': info.get('width', 0),
-                    'height': info.get('height', 0),
-                    'filename': downloaded_filename,
-                    'thumbnail': info.get('thumbnail', ''),
-                    'description': info.get('description', ''),
-                    'uploader': info.get('uploader', 'Unknown'),
-                }
-
-                logger.info(f"Video downloaded successfully: {video_info['filename']}")
-                return video_info
+            result = self._download_with_retry(url, platform, filename)
+            return result
 
         except Exception as e:
             error_msg = str(e)
@@ -207,12 +226,73 @@ class VideoDownloader:
             if alt_result:
                 return alt_result
 
-            logger.error(f"All download methods failed")
+            logger.error("All download methods failed")
             return {
                 'success': False,
                 'error': f"Download failed: {error_msg}. Please try: 1) Update yt-dlp (pip install -U yt-dlp), 2) Check if the video is public, 3) Try a different video URL.",
                 'platform': platform
             }
+
+    @_retry_download
+    def _download_with_retry(self, url: str, platform: str, filename: str) -> Dict[str, any]:
+        """
+        Core download logic wrapped with retry decorator.
+        Raises on failure so the retry decorator can handle it.
+        """
+        ydl_opts = self._get_ydl_opts(platform, filename)
+
+        # Hook de progreso
+        def progress_hook(d):
+            if d['status'] == 'downloading':
+                percent = d.get('_percent_str', 'N/A')
+                speed = d.get('_speed_str', 'N/A')
+                logger.info(f"Downloading: {percent} at {speed}")
+            elif d['status'] == 'finished':
+                logger.info("Download completed, processing...")
+
+        ydl_opts['progress_hooks'] = [progress_hook]
+        ydl_opts['socket_timeout'] = DOWNLOAD_TIMEOUT
+
+        # Descargar video with timeout via subprocess watchdog
+        start_time = time.monotonic()
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            logger.info(f"Starting download from: {url}")
+            info = ydl.extract_info(url, download=True)
+
+            elapsed = time.monotonic() - start_time
+            if elapsed > DOWNLOAD_TIMEOUT:
+                raise TimeoutError(
+                    f"Download exceeded timeout of {DOWNLOAD_TIMEOUT}s "
+                    f"(took {elapsed:.0f}s)"
+                )
+
+            if info is None:
+                raise Exception("Could not extract video information")
+
+            # Obtener nombre del archivo descargado
+            downloaded_filename = ydl.prepare_filename(info)
+
+            # Verificar que el archivo existe
+            if not os.path.exists(downloaded_filename):
+                # Buscar el archivo más reciente en downloads
+                downloaded_filename = self._find_latest_download()
+
+            video_info = {
+                'success': True,
+                'title': info.get('title', 'Unknown'),
+                'duration': info.get('duration', 0),
+                'platform': platform,
+                'width': info.get('width', 0),
+                'height': info.get('height', 0),
+                'filename': downloaded_filename,
+                'thumbnail': info.get('thumbnail', ''),
+                'description': info.get('description', ''),
+                'uploader': info.get('uploader', 'Unknown'),
+            }
+
+            logger.info(f"Video downloaded successfully: {video_info['filename']}")
+            return video_info
 
     def _try_cli_download(self, url: str, platform: str) -> Optional[Dict]:
         """
@@ -234,7 +314,7 @@ class VideoDownloader:
             ]
 
             logger.info(f"Running CLI command: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=DOWNLOAD_TIMEOUT)
 
             if result.returncode == 0:
                 # Buscar el archivo descargado
