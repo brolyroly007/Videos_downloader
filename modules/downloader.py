@@ -191,13 +191,16 @@ class VideoDownloader:
         # Fallback: generar ID único
         return str(uuid.uuid4())[:12]
 
-    def download(self, url: str, custom_filename: Optional[str] = None) -> Dict[str, any]:
+    def download(self, url: str, custom_filename: Optional[str] = None,
+                 progress_callback: Optional[callable] = None) -> Dict[str, any]:
         """
         Descarga un video desde la URL proporcionada
 
         Args:
             url: URL del video a descargar
             custom_filename: Nombre personalizado para el archivo (opcional)
+            progress_callback: Optional callable that receives a dict with
+                {"percent": float, "speed_mb": float, "eta_seconds": int, "status": str}
 
         Returns:
             Dict con información del video descargado
@@ -212,7 +215,8 @@ class VideoDownloader:
             filename = "%(id)s.%(ext)s"
 
         try:
-            result = self._download_with_retry(url, platform, filename)
+            result = self._download_with_retry(url, platform, filename,
+                                                progress_callback=progress_callback)
             return result
 
         except Exception as e:
@@ -234,7 +238,8 @@ class VideoDownloader:
             }
 
     @_retry_download
-    def _download_with_retry(self, url: str, platform: str, filename: str) -> Dict[str, any]:
+    def _download_with_retry(self, url: str, platform: str, filename: str,
+                             progress_callback: Optional[callable] = None) -> Dict[str, any]:
         """
         Core download logic wrapped with retry decorator.
         Raises on failure so the retry decorator can handle it.
@@ -243,12 +248,37 @@ class VideoDownloader:
 
         # Hook de progreso
         def progress_hook(d):
-            if d['status'] == 'downloading':
+            status = d.get('status', '')
+            if status == 'downloading':
                 percent = d.get('_percent_str', 'N/A')
                 speed = d.get('_speed_str', 'N/A')
                 logger.info(f"Downloading: {percent} at {speed}")
-            elif d['status'] == 'finished':
+            elif status == 'finished':
                 logger.info("Download completed, processing...")
+
+            # Report progress to caller via callback
+            if progress_callback is not None:
+                try:
+                    downloaded = d.get('downloaded_bytes') or 0
+                    total = d.get('total_bytes') or d.get('total_bytes_estimate') or 0
+                    if total > 0:
+                        pct = round((downloaded / total) * 100, 1)
+                    else:
+                        pct = 0.0
+
+                    raw_speed = d.get('speed')  # bytes/s or None
+                    speed_mb = round(raw_speed / (1024 * 1024), 2) if raw_speed else 0.0
+
+                    eta_seconds = d.get('eta') or 0
+
+                    progress_callback({
+                        "percent": pct,
+                        "speed_mb": speed_mb,
+                        "eta_seconds": int(eta_seconds),
+                        "status": status,
+                    })
+                except Exception:
+                    pass  # Never let callback errors break the download
 
         ydl_opts['progress_hooks'] = [progress_hook]
         ydl_opts['socket_timeout'] = DOWNLOAD_TIMEOUT

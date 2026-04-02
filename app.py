@@ -350,7 +350,14 @@ async def complete_flow_endpoint(request: CompleteFlowRequest, background_tasks:
 
         # 1. Descargar video
         logger.info("Step 1: Downloading...")
-        download_result = downloader.download(request.url)
+
+        def _on_download_progress(info):
+            tasks_status[task_id]["download_progress"] = info
+            pct = info.get("percent", 0)
+            spd = info.get("speed_mb", 0)
+            tasks_status[task_id]["progress"] = f"Downloading... {pct}% ({spd} MB/s)"
+
+        download_result = downloader.download(request.url, progress_callback=_on_download_progress)
 
         if not download_result['success']:
             tasks_status[task_id] = {
@@ -949,8 +956,15 @@ async def auto_flow_endpoint(request: AutoFlowRequest, background_tasks: Backgro
         tasks_status[task_id]["progress"] = f"Descargando video viral..."
         tasks_status[task_id]["step"] = 2
 
+        def _on_viral_download_progress(info):
+            tasks_status[task_id]["download_progress"] = info
+            pct = info.get("percent", 0)
+            spd = info.get("speed_mb", 0)
+            tasks_status[task_id]["progress"] = f"Descargando video viral... {pct}% ({spd} MB/s)"
+
         logger.info(f"[AutoFlow {task_id}] Step 2: Downloading video...")
-        download_result = downloader.download(selected_video.url)
+        download_result = downloader.download(selected_video.url,
+                                              progress_callback=_on_viral_download_progress)
 
         if not download_result.get('success'):
             tasks_status[task_id] = {
