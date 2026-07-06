@@ -16,7 +16,7 @@ import sqlite3
 from functools import wraps
 
 from fastapi import HTTPException, Depends, Request, status
-from fastapi.security import HTTPBasic, HTTPBasicCredentials, HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 logger = logging.getLogger(__name__)
 
@@ -452,9 +452,8 @@ class AuthManager:
         return [u.to_dict() for u in self.db.get_all_users()]
 
 
-# Dependencias de FastAPI
+# Dependencias de FastAPI (solo tokens Bearer)
 security_bearer = HTTPBearer(auto_error=False)
-security_basic = HTTPBasic(auto_error=False)
 
 # Instancia global (se puede configurar desde app.py). La DB vive en DATA_DIR
 # para persistir en Docker (volumen) sin la trampa del bind-mount de archivos.
@@ -466,10 +465,14 @@ auth_manager = AuthManager(
 
 async def get_current_user(
     request: Request,
-    bearer: HTTPAuthorizationCredentials = Depends(security_bearer),
-    basic: HTTPBasicCredentials = Depends(security_basic)
+    bearer: HTTPAuthorizationCredentials = Depends(security_bearer)
 ) -> Optional[User]:
-    """Dependencia para obtener el usuario actual"""
+    """Dependencia para obtener el usuario actual.
+
+    Solo se aceptan tokens (Bearer o cabecera X-Auth-Token): son baratos de
+    validar. NO se acepta Basic auth por request porque re-hashearía PBKDF2
+    100k iteraciones en cada llamada; para obtener un token usa /api/auth/login.
+    """
 
     # Si la auth está deshabilitada, retornar None (acceso libre)
     if not auth_manager.enabled:
@@ -478,12 +481,6 @@ async def get_current_user(
     # Intentar con Bearer token primero
     if bearer:
         user = auth_manager.validate_token(bearer.credentials)
-        if user:
-            return user
-
-    # Intentar con Basic auth
-    if basic:
-        user = auth_manager.db.authenticate(basic.username, basic.password)
         if user:
             return user
 
