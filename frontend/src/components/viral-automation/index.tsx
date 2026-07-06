@@ -536,10 +536,22 @@ export function ViralAutomation() {
 
                     {/* Resizer */}
                     <div
-                      className="hidden xl:flex items-center justify-center cursor-col-resize hover:bg-white/10 transition-colors relative group"
+                      role="separator"
+                      aria-orientation="vertical"
+                      aria-label="Ajustar ancho de los paneles"
+                      tabIndex={0}
+                      aria-valuenow={Math.round(leftWidth)}
+                      aria-valuemin={20}
+                      aria-valuemax={80}
+                      className="hidden xl:flex items-center justify-center cursor-col-resize hover:bg-white/10 transition-colors relative group focus:outline-none focus:bg-white/20"
                       style={{ width: "8px", flexShrink: 0 }}
                       onMouseDown={handleMouseDown}
                       onDoubleClick={() => setLeftWidth(50)}
+                      onKeyDown={(e) => {
+                        if (e.key === "ArrowLeft") { e.preventDefault(); setLeftWidth((w) => Math.max(20, w - 2)) }
+                        else if (e.key === "ArrowRight") { e.preventDefault(); setLeftWidth((w) => Math.min(80, w + 2)) }
+                        else if (e.key === "Home") { e.preventDefault(); setLeftWidth(50) }
+                      }}
                     >
                       <div className="w-0.5 h-8 bg-white/20 group-hover:bg-white/40 transition-colors rounded-full" />
                     </div>

@@ -183,6 +183,7 @@ function OutputSectionBase({
                 size="sm"
                 onClick={copyTranscription}
                 disabled={!transcription}
+                aria-label="Copiar transcripción"
                 className="h-7 px-2 text-gray-400 hover:text-white"
               >
                 {copied ? (
@@ -228,9 +229,10 @@ function OutputSectionBase({
                         <Button
                           variant="ghost"
                           size="sm"
+                          aria-label={`Abrir ${file.name}`}
                           className="h-6 w-6 p-0 text-gray-400 hover:text-white"
                           onClick={() => {
-                            window.open(`${API_BASE_URL}/files/downloads/${file.name}`, '_blank')
+                            window.open(`${API_BASE_URL}/files/downloads/${file.name}`, '_blank', 'noopener,noreferrer')
                           }}
                         >
                           <Download className="size-3" />
@@ -264,9 +266,10 @@ function OutputSectionBase({
                         <Button
                           variant="ghost"
                           size="sm"
+                          aria-label={`Abrir ${file.name}`}
                           className="h-6 w-6 p-0 text-gray-400 hover:text-white"
                           onClick={() => {
-                            window.open(`${API_BASE_URL}/files/processed/${file.name}`, '_blank')
+                            window.open(`${API_BASE_URL}/files/processed/${file.name}`, '_blank', 'noopener,noreferrer')
                           }}
                         >
                           <Download className="size-3" />

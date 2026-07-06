@@ -79,12 +79,13 @@ function InputSectionBase({
         {/* URL Input */}
         <div className="space-y-2">
           <div className="flex items-center justify-between mb-2 select-none">
-            <label className="text-sm md:text-base font-medium text-gray-300">Video URL</label>
+            <label htmlFor="video-url" className="text-sm md:text-base font-medium text-gray-300">Video URL</label>
             <Button
               onClick={onClearAll}
               disabled={!hasContent}
               variant="outline"
               size="sm"
+              aria-label="Limpiar campos"
               className="h-7 md:h-8 px-2 md:px-3 text-xs bg-transparent border border-gray-600 text-white hover:bg-gray-700 disabled:opacity-50"
             >
               <Trash2 className="size-3 md:size-4 md:mr-1" />
@@ -93,6 +94,7 @@ function InputSectionBase({
           </div>
           <div className="flex gap-2">
             <input
+              id="video-url"
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
@@ -103,6 +105,7 @@ function InputSectionBase({
               onClick={onPreview}
               disabled={!url.trim() || previewLoading}
               variant="outline"
+              aria-label="Previsualizar video"
               className="h-auto px-3 md:px-4 bg-transparent border border-gray-600 text-white hover:bg-gray-700"
             >
               {previewLoading ? (
@@ -145,10 +148,11 @@ function InputSectionBase({
 
         {/* Description for TikTok */}
         <div className="space-y-2">
-          <label className="text-sm md:text-base font-medium text-gray-300 select-none">
+          <label htmlFor="tiktok-description" className="text-sm md:text-base font-medium text-gray-300 select-none">
             TikTok Description
           </label>
           <textarea
+            id="tiktok-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Add hashtags and description for TikTok upload..."

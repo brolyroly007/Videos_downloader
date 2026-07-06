@@ -63,9 +63,18 @@ function ProcessingHistoryBase({
           {jobs.map((job) => (
             <div
               key={job.id}
+              role="button"
+              tabIndex={0}
+              aria-pressed={selectedId === job.id}
               onClick={() => onSelect(job.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  onSelect(job.id)
+                }
+              }}
               className={cn(
-                "flex items-center gap-2 p-2 cursor-pointer transition-colors group",
+                "flex items-center gap-2 p-2 cursor-pointer transition-colors group focus:outline-none focus:ring-1 focus:ring-purple-500",
                 selectedId === job.id
                   ? "bg-white/10 border-l-2 border-purple-500"
                   : "hover:bg-white/5 border-l-2 border-transparent"
@@ -90,6 +99,7 @@ function ProcessingHistoryBase({
               <Button
                 variant="ghost"
                 size="sm"
+                aria-label="Eliminar trabajo"
                 className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500 flex-shrink-0"
                 onClick={(e) => {
                   e.stopPropagation()
