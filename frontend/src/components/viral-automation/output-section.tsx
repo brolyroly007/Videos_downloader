@@ -18,6 +18,7 @@ import {
   AlertCircle
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { formatFileSize, formatDate } from "@/lib/format"
 
 interface OutputSectionProps {
   selectedJob?: ProcessingJob
@@ -45,15 +46,6 @@ function OutputSectionBase({
     }
   }
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  }
-
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleString()
-  }
 
   return (
     <div className="flex flex-col h-full">

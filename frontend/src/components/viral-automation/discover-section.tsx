@@ -34,6 +34,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { API_BASE_URL } from "@/lib/api"
+import { formatCount, formatDuration } from "@/lib/format"
 
 // Categorías disponibles
 const CATEGORIES = [
@@ -96,18 +97,6 @@ export function DiscoverSection({ onAddToQueue }: DiscoverSectionProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [failedThumbs, setFailedThumbs] = useState<Set<string>>(new Set())
-
-  const formatCount = (num: number): string => {
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
-    return num.toString()
-  }
-
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
 
   const searchCategory = useCallback(async (categoryId: string) => {
     const category = CATEGORIES.find(c => c.id === categoryId)

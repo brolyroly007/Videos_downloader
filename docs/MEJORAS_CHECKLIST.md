@@ -99,7 +99,7 @@
 
 ### 🟢 Bajo
 
-- [ ] F21. Utilidades de formato duplicadas (output-section/file-list/discover-section). Extraer `lib/format.ts`.
+- [x] F21. Utilidades de formato duplicadas (output-section/file-list/discover-section). Extraer `lib/format.ts`. → Nuevo `@/lib/format` con `formatFileSize`/`formatDate`/`formatCount`/`formatDuration`; output-section y discover-section los importan y se quitaron las copias locales. (file-list era de dashboard/, borrado en F8.) `tsc` pasa.
 - [ ] F22. Tema claro inexistente pero toggle presente (`.dark` == `:root`, globals.css:35-55). Implementar o quitar next-themes.
 - [ ] F23. `alert()`/`confirm()` nativos en dashboard. Migrar a toasts/diálogos si se rescatan.
 - [ ] F24. `speedFactor` sin usar (video-processor.tsx:59); `1.02` hardcodeado (index.tsx:175).
