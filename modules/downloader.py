@@ -25,6 +25,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+# Verificación TLS activada por defecto. Solo se desactiva si el operador
+# lo pide explícitamente (algunos CDNs con certificados problemáticos).
+_INSECURE_SSL = os.getenv("YTDLP_INSECURE_SSL", "false").lower() == "true"
+
+
 def validate_media_url(url: str) -> str:
     """
     Valida que la URL sea http(s) para no pasar flags de yt-dlp como si
@@ -139,7 +144,7 @@ class VideoDownloader:
             'format': 'best',
             'quiet': False,
             'no_warnings': False,
-            'no_check_certificates': True,
+            'no_check_certificates': _INSECURE_SSL,
             'retries': 10,
             'fragment_retries': 10,
         }
@@ -352,14 +357,14 @@ class VideoDownloader:
 
             cmd = [
                 'yt-dlp',
-                '--no-check-certificates',
                 '--no-warnings',
                 '-o', output_template,
                 '--no-playlist',
                 '--retries', '10',
-                '--',
-                url
             ]
+            if _INSECURE_SSL:
+                cmd.append('--no-check-certificates')
+            cmd += ['--', url]
 
             logger.info(f"Running CLI command: {' '.join(cmd)}")
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=DOWNLOAD_TIMEOUT)
@@ -417,7 +422,7 @@ class VideoDownloader:
             ydl_opts = {
                 'quiet': True,
                 'no_warnings': True,
-                'no_check_certificates': True,
+                'no_check_certificates': _INSECURE_SSL,
                 'skip_download': True,
             }
 
