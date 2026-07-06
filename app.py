@@ -1503,14 +1503,15 @@ async def get_backup_info(backup_name: str):
 
 
 @app.post("/api/backup/restore/{backup_name}")
-async def restore_backup(backup_name: str, restore_dbs: bool = True, restore_dirs: bool = True):
+async def restore_backup(backup_name: str, restore_dbs: bool = True, restore_dirs: bool = True,
+                         _admin=Depends(require_role("admin"))):
     """Restaura un backup"""
     result = backup_manager.restore_backup(backup_name, restore_dbs, restore_dirs)
     return JSONResponse(result)
 
 
 @app.delete("/api/backup/{backup_name}")
-async def delete_backup(backup_name: str):
+async def delete_backup(backup_name: str, _admin=Depends(require_role("admin"))):
     """Elimina un backup"""
     success = backup_manager.delete_backup(backup_name)
     return JSONResponse({

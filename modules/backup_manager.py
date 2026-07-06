@@ -159,8 +159,20 @@ class BackupManager:
             except Exception as e:
                 logger.error(f"Error deleting old backup: {e}")
 
+    @staticmethod
+    def _safe_extract(zipf: zipfile.ZipFile, extract_path: Path) -> None:
+        """Extrae un zip validando cada miembro para evitar Zip Slip (CWE-22)."""
+        dest_root = extract_path.resolve()
+        for member in zipf.namelist():
+            target = (dest_root / member).resolve()
+            if not (target == dest_root or dest_root in target.parents):
+                raise ValueError(f"Ruta insegura en el backup (Zip Slip): {member}")
+        zipf.extractall(extract_path)
+
     def restore_backup(self, backup_name: str, restore_dbs: bool = True, restore_dirs: bool = True) -> Dict:
         """Restaura un backup"""
+        # Evitar path traversal: quedarse solo con el nombre del archivo
+        backup_name = Path(backup_name).name
         zip_path = self.backup_dir / f"{backup_name}.zip"
 
         if not zip_path.exists():
@@ -173,7 +185,7 @@ class BackupManager:
             # Extraer backup
             extract_path = self.backup_dir / "temp_restore"
             with zipfile.ZipFile(zip_path, 'r') as zipf:
-                zipf.extractall(extract_path)
+                self._safe_extract(zipf, extract_path)
 
             restored = []
             errors = []
@@ -240,6 +252,7 @@ class BackupManager:
 
     def get_backup_info(self, backup_name: str) -> Optional[Dict]:
         """Obtiene información detallada de un backup"""
+        backup_name = Path(backup_name).name
         zip_path = self.backup_dir / f"{backup_name}.zip"
 
         if not zip_path.exists():
@@ -272,6 +285,7 @@ class BackupManager:
 
     def delete_backup(self, backup_name: str) -> bool:
         """Elimina un backup específico"""
+        backup_name = Path(backup_name).name
         zip_path = self.backup_dir / f"{backup_name}.zip"
 
         if zip_path.exists():
