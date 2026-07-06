@@ -3,7 +3,7 @@ Main FastAPI Application
 Dashboard para automatización de contenido viral
 """
 
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, BackgroundTasks
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -1605,9 +1605,8 @@ async def change_password(request: ChangePasswordRequest, req: Request):
 
 
 @app.post("/api/auth/users")
-async def create_user(request: CreateUserRequest):
+async def create_user(request: CreateUserRequest, _admin=Depends(require_role("admin"))):
     """Crea un nuevo usuario (solo admin)"""
-    # En producción, verificar que el usuario actual es admin
     user = auth_manager.create_user(request.username, request.password, request.role)
     return JSONResponse({
         "success": True,
@@ -1616,7 +1615,7 @@ async def create_user(request: CreateUserRequest):
 
 
 @app.get("/api/auth/users")
-async def list_users():
+async def list_users(_admin=Depends(require_role("admin"))):
     """Lista todos los usuarios (solo admin)"""
     users = auth_manager.get_all_users()
     return JSONResponse({
