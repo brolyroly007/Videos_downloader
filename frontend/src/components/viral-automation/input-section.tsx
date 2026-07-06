@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Trash2, Search, Play, Upload, Loader2 } from "lucide-react"
 import { VideoInfo } from "@/lib/api"
 import { cn } from "@/lib/utils"
+import { MAX_CONCURRENT_JOBS } from "@/lib/constants"
 
 const btnClassName = "w-full h-10 md:h-12 text-sm md:text-base font-semibold bg-white text-black hover:bg-gray-200"
 
@@ -70,7 +71,7 @@ function InputSectionBase({
   onClearAll,
 }: InputSectionProps) {
   const hasContent = url.trim() || description.trim()
-  const canAddMore = processingCount < 5
+  const canAddMore = processingCount < MAX_CONCURRENT_JOBS
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -257,7 +258,7 @@ function InputSectionBase({
               <span className={cn(
                 canAddMore ? "text-green-500" : "text-yellow-500"
               )}>
-                {canAddMore ? `Add up to ${5 - processingCount} more` : "Queue full"}
+                {canAddMore ? `Add up to ${MAX_CONCURRENT_JOBS - processingCount} more` : "Queue full"}
               </span>
             </div>
           )}

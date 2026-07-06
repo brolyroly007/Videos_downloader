@@ -10,6 +10,7 @@ import { DiscoverSection } from "./discover-section"
 import { api, ProcessingOptions, VideoInfo, FileInfo } from "@/lib/api"
 import { Zap, Compass, Video } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { MAX_CONCURRENT_JOBS } from "@/lib/constants"
 
 const MemoizedDithering = memo(Dithering)
 
@@ -74,7 +75,7 @@ export function ViralAutomation() {
   const selectedJob = jobs.find((j) => j.id === selectedJobId) || jobs[0]
   const processingCount = jobs.filter((j) => j.status === "processing").length
   const isProcessing = processingCount > 0
-  const canAddMore = processingCount < 5 // Allow up to 5 concurrent jobs
+  const canAddMore = processingCount < MAX_CONCURRENT_JOBS
 
   // Usa sonner (montado en layout) en vez de un toast casero con setTimeout:
   // maneja el apilado, el cierre y la accesibilidad sin sobrescribirse.
@@ -185,7 +186,7 @@ export function ViralAutomation() {
     }
 
     if (!canAddMore) {
-      showToast("Max 5 videos processing at once. Wait for one to finish.", "error")
+      showToast(`Máximo ${MAX_CONCURRENT_JOBS} videos procesándose a la vez. Espera a que uno termine.`, "error")
       return
     }
 
