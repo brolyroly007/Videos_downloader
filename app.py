@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 # Importar módulos personalizados
 from modules.downloader import VideoDownloader
 from modules.video_processor import VideoProcessor
-from modules.subtitle_generator import SubtitleGenerator
+from modules.subtitle_generator import SubtitleGenerator, WHISPER_AVAILABLE
 from modules.uploader import TikTokUploader
 from modules.viral_detector import ViralDetector
 from modules.automation_engine import AutomationEngine, AutomationDatabase, JobStatus
@@ -297,6 +297,12 @@ async def process_video_endpoint(request: VideoProcessRequest):
 
         # Generar subtítulos si se solicita
         if request.generate_subtitles:
+            if not WHISPER_AVAILABLE:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Subtítulos solicitados pero Whisper no está instalado. "
+                           "Instala openai-whisper y torch, o usa generate_subtitles=false."
+                )
             logger.info("Generating subtitles...")
 
             # Inicializar generador de subtítulos (carga Whisper)
@@ -464,8 +470,12 @@ async def complete_flow_endpoint(request: CompleteFlowRequest, background_tasks:
 
                 tasks_status[task_id]['data']['processed_video'] = processed_video
 
-                # 3. Generar subtítulos (si se solicita)
-                if request.generate_subtitles:
+                # 3. Generar subtítulos (si se solicita y Whisper está disponible)
+                if request.generate_subtitles and not WHISPER_AVAILABLE:
+                    logger.warning("Subtítulos solicitados pero Whisper no está instalado; se omiten")
+                    tasks_status[task_id]['data']['subtitles_skipped'] = "Whisper no instalado"
+
+                if request.generate_subtitles and WHISPER_AVAILABLE:
                     tasks_status[task_id]['progress'] = "Generating subtitles..."
                     logger.info("Step 3: Generating subtitles...")
 

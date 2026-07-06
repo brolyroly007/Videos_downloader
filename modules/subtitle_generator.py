@@ -72,6 +72,11 @@ class SubtitleGenerator:
             logger.error(f"Failed to load Whisper model: {e}")
             self.model = None
 
+    @property
+    def available(self) -> bool:
+        """True si Whisper está instalado y el modelo se cargó correctamente."""
+        return self.model is not None
+
     def extract_audio(self, video_path: str) -> str:
         """Extrae el audio del video a un archivo WAV temporal"""
         try:
@@ -100,6 +105,11 @@ class SubtitleGenerator:
         Returns:
             Diccionario con la transcripción completa y segmentos
         """
+        if self.model is None:
+            raise RuntimeError(
+                "Whisper no está disponible (modelo no cargado). Instala "
+                "openai-whisper y torch, o desactiva generate_subtitles/burn_subtitles."
+            )
         try:
             logger.info("Transcribing audio with Whisper...")
 
