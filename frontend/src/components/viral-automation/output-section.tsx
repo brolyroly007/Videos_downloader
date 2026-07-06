@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ProcessingJob } from "./index"
-import { FileInfo } from "@/lib/api"
+import { FileInfo, API_BASE_URL } from "@/lib/api"
 import {
   Play,
   Download,
@@ -130,7 +130,7 @@ export function OutputSection({
                     <div className="w-full h-full flex flex-col items-center justify-center gap-4">
                       <div className="relative w-full max-w-[280px] aspect-[9/16] bg-black border border-gray-600 overflow-hidden">
                         <video
-                          src={`http://localhost:8000/files/processed/${selectedJob.result.videoPath.split('/').pop()}`}
+                          src={`${API_BASE_URL}/files/processed/${selectedJob.result.videoPath.split('/').pop()}`}
                           controls
                           className="w-full h-full object-contain"
                         />
@@ -141,7 +141,7 @@ export function OutputSection({
                         className="bg-transparent border-gray-600 text-white hover:bg-gray-700"
                         onClick={() => {
                           const link = document.createElement('a')
-                          link.href = `http://localhost:8000/files/processed/${selectedJob.result?.videoPath?.split('/').pop()}`
+                          link.href = `${API_BASE_URL}/files/processed/${selectedJob.result?.videoPath?.split('/').pop()}`
                           link.download = selectedJob.result?.videoPath?.split('/').pop() || 'video.mp4'
                           link.click()
                         }}
@@ -230,7 +230,7 @@ export function OutputSection({
                           size="sm"
                           className="h-6 w-6 p-0 text-gray-400 hover:text-white"
                           onClick={() => {
-                            window.open(`http://localhost:8000/files/downloads/${file.name}`, '_blank')
+                            window.open(`${API_BASE_URL}/files/downloads/${file.name}`, '_blank')
                           }}
                         >
                           <Download className="size-3" />
@@ -266,7 +266,7 @@ export function OutputSection({
                           size="sm"
                           className="h-6 w-6 p-0 text-gray-400 hover:text-white"
                           onClick={() => {
-                            window.open(`http://localhost:8000/files/processed/${file.name}`, '_blank')
+                            window.open(`${API_BASE_URL}/files/processed/${file.name}`, '_blank')
                           }}
                         >
                           <Download className="size-3" />

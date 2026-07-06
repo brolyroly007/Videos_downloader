@@ -33,6 +33,7 @@ import {
   ImageOff
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { API_BASE_URL } from "@/lib/api"
 
 // Categorías disponibles
 const CATEGORIES = [
@@ -100,7 +101,7 @@ export function DiscoverSection({ onAddToQueue }: DiscoverSectionProps) {
 
     try {
       // Usar el nuevo endpoint de discover que usa yt-dlp para datos reales
-      const response = await fetch(`http://localhost:8000/api/discover/${categoryId}?limit=12`, {
+      const response = await fetch(`${API_BASE_URL}/api/discover/${categoryId}?limit=12`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       })
