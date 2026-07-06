@@ -13,7 +13,6 @@ from dataclasses import dataclass, asdict
 from datetime import datetime
 import re
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

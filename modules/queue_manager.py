@@ -15,7 +15,6 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 import threading
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

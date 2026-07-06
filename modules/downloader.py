@@ -21,7 +21,6 @@ import uuid
 
 from modules.config import MAX_DOWNLOAD_RETRIES, RETRY_BASE_DELAY, DOWNLOAD_TIMEOUT
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

@@ -34,7 +34,6 @@ except ImportError:
     MOVIEPY_AVAILABLE = False
     logging.warning("MoviePy not available - video processing disabled")
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

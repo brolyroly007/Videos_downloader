@@ -13,7 +13,6 @@ from playwright.async_api import async_playwright, Browser, Page
 import logging
 import json
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

@@ -39,7 +39,6 @@ def find_ytdlp():
 
 YTDLP_PATH = find_ytdlp()
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Ruta de cookies

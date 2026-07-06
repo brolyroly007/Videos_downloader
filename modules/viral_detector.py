@@ -21,7 +21,6 @@ try:
 except ImportError:
     PLAYWRIGHT_AVAILABLE = False
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

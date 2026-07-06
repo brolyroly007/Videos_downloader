@@ -22,7 +22,6 @@ from modules.video_processor import VideoProcessor
 from modules.subtitle_generator import SubtitleGenerator
 from modules.uploader import TikTokUploader
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

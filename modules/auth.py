@@ -18,7 +18,6 @@ from functools import wraps
 from fastapi import HTTPException, Depends, Request, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials, HTTPBearer, HTTPAuthorizationCredentials
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
