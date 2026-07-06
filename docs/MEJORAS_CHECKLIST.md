@@ -101,9 +101,9 @@
 
 - [x] F21. Utilidades de formato duplicadas (output-section/file-list/discover-section). Extraer `lib/format.ts`. → Nuevo `@/lib/format` con `formatFileSize`/`formatDate`/`formatCount`/`formatDuration`; output-section y discover-section los importan y se quitaron las copias locales. (file-list era de dashboard/, borrado en F8.) `tsc` pasa.
 - [x] F22. Tema claro inexistente pero toggle presente (`.dark` == `:root`, globals.css:35-55). Implementar o quitar next-themes. → El app es dark-only (el toggle vivía en el header borrado en F8). Se fuerza `forcedTheme="dark"` y se quita `enableSystem`, así el único tema definido (`.dark`) siempre aplica y un SO en modo claro no deja la UI sin estilos. next-themes se conserva porque `ui/sonner` lo usa. `tsc` pasa.
-- [ ] F23. `alert()`/`confirm()` nativos en dashboard. Migrar a toasts/diálogos si se rescatan.
-- [ ] F24. `speedFactor` sin usar (video-processor.tsx:59); `1.02` hardcodeado (index.tsx:175).
-- [ ] F25. `processAsync()` promesa flotante (index.tsx:237). Marcar `void`.
+- [x] F23. `alert()`/`confirm()` nativos en dashboard. Migrar a toasts/diálogos si se rescatan. → (N/A: los componentes de `dashboard/` que los usaban se eliminaron en F8; ya no hay `alert`/`confirm` en la base viva.)
+- [x] F24. `speedFactor` sin usar (video-processor.tsx:59); `1.02` hardcodeado (index.tsx:175). → (N/A: `video-processor.tsx` se borró en F8. El `1.02` de index.tsx es el valor por defecto de `speed_factor` en la opción de procesamiento —el backend ya lo acota con Field ge=0.5/le=2.0 en B20—; no es un estado sin usar.)
+- [x] F25. `processAsync()` promesa flotante (index.tsx:237). Marcar `void`. → `void processAsync()` (el try/catch interno maneja los errores). `tsc` pasa.
 - [ ] F26. Config: `lint` sin path, sin `typecheck`, sin tests/CI del front, `target: ES2017` (→ES2022), sin `reactStrictMode`, sin `.env.example`.
 - [ ] F27. `window.open` sin `noopener,noreferrer` (discover-section.tsx:349, output-section.tsx:233,269).
 - [ ] F28. Descarga cross-origin con `link.click()` ignora `download` (output-section.tsx:142-147); usar blob o `Content-Disposition`.

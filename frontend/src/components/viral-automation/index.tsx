@@ -325,8 +325,8 @@ export function ViralAutomation() {
       }
     }
 
-    // Start processing without blocking
-    processAsync()
+    // Se lanza sin bloquear; el try/catch interno maneja los errores.
+    void processAsync()
 
   }, [url, description, videoInfo, reframe, backgroundType, backgroundColor, applyMirror, applySpeed, generateSubtitles, subtitleLanguage, burnSubtitles, showToast, fetchFiles, canAddMore, isSupportedUrl])
 
