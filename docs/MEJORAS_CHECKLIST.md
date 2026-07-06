@@ -93,7 +93,7 @@
 - [x] F15. `selectedJob` inconsistente tras borrar (index.tsx:75 vs processing-history.tsx:69). → `handleDeleteJob` ahora, al borrar el job seleccionado, selecciona el siguiente disponible (`remaining[0]?.id ?? null`) dentro del updater de `setJobs`, así el panel y el resaltado del historial coinciden. `tsc` pasa.
 - [x] F16. IDs de job con `Date.now()` (index.tsx:140). Usar `crypto.randomUUID()`. → `jobId = job_${crypto.randomUUID()}`. (Los otros `Date.now()` son timing del deadline de polling, no IDs.) `tsc` pasa.
 - [x] F17. Manipulación directa del DOM en onError de imagen (discover-section.tsx:277-281). Usar estado `imgError` por ítem. → Estado `failedThumbs` (Set de ids); el `onError` agrega el id y el render muestra el fallback `ImageOff` de forma declarativa, sin tocar `style`/`classList`/`nextElementSibling`. `tsc` pasa.
-- [ ] F18. `<img>` en vez de `next/image` (input-section.tsx:121, discover-section.tsx:273) y `next.config.ts` con `hostname: '**'`. Restringir a CDNs reales.
+- [x] F18. `<img>` en vez de `next/image` (input-section.tsx:121, discover-section.tsx:273) y `next.config.ts` con `hostname: '**'`. Restringir a CDNs reales. → `remotePatterns` restringido a `**.tiktokcdn.com`/`**.tiktokcdn-us.com`/`**.ytimg.com`/`**.cdninstagram.com`/`**.fbcdn.net` (cierra el proxy abierto de `**`). Los `<img>` se mantienen a propósito: son thumbnails de subdominios CDN dinámicos que `next/image` con patrones estrictos rompería. `tsc` pasa.
 - [ ] F19. Accesibilidad: labels sin `htmlFor`, botones icon-only sin `aria-label`, toast sin `aria-live`, resizer sin teclado/rol, filas sin `role="button"`, `select-none` global que impide copiar.
 - [ ] F20. i18n inconsistente (inglés/español mezclados; `lang="en"` en layout.tsx:28). Unificar.
 
