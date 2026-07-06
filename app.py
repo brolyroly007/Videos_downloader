@@ -59,7 +59,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configurar rutas de archivos estáticos y templates
+# Configurar rutas de archivos estáticos y templates.
+# Crear los directorios al importar (no solo en __main__): con `uvicorn app:app`
+# sobre un checkout limpio, StaticFiles(directory="static") fallaría si no existen.
+for _d in ("static", "templates", "downloads", "processed", "temp", "cookies", "cache"):
+    os.makedirs(_d, exist_ok=True)
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -1797,9 +1802,7 @@ async def _shutdown_services():
 if __name__ == "__main__":
     import uvicorn
 
-    # Crear directorios necesarios si no existen
-    for directory in ["downloads", "processed", "temp", "cookies", "static", "templates", "cache"]:
-        Path(directory).mkdir(exist_ok=True)
+    # (Los directorios necesarios ya se crean al importar el módulo.)
 
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "8000"))
