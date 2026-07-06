@@ -339,10 +339,15 @@ export function ViralAutomation() {
 
   // Delete job
   const handleDeleteJob = useCallback((id: string) => {
-    setJobs((prev) => prev.filter((j) => j.id !== id))
-    if (selectedJobId === id) {
-      setSelectedJobId(null)
-    }
+    setJobs((prev) => {
+      const remaining = prev.filter((j) => j.id !== id)
+      // Si se borró el job seleccionado, seleccionar el siguiente disponible
+      // (o ninguno) para que el resaltado del historial y el panel coincidan.
+      if (selectedJobId === id) {
+        setSelectedJobId(remaining[0]?.id ?? null)
+      }
+      return remaining
+    })
   }, [selectedJobId])
 
   // Add video from Discover section
