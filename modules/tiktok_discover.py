@@ -311,12 +311,14 @@ class TikTokDiscovery:
         Obtiene detalles completos de un video específico
         """
         try:
+            from modules.downloader import validate_media_url
+            url = validate_media_url(url)
             cmd = [
                 YTDLP_PATH,
                 '--dump-json',
                 '--no-download',
                 '--no-warnings',
-            ] + self._get_cookies_args() + [url]
+            ] + self._get_cookies_args() + ['--', url]
 
             # Use subprocess.run in a thread pool for Windows compatibility
             def run_ytdlp_details():

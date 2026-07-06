@@ -371,10 +371,13 @@ class ViralDetector:
         import subprocess
 
         try:
+            from modules.downloader import validate_media_url
+            url = validate_media_url(url)
             cmd = [
                 'yt-dlp',
                 '--dump-json',
                 '--no-download',
+                '--',
                 url
             ]
 

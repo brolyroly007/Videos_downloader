@@ -25,6 +25,22 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def validate_media_url(url: str) -> str:
+    """
+    Valida que la URL sea http(s) para no pasar flags de yt-dlp como si
+    fueran una URL (ej. --exec=, --batch-file=). Devuelve la URL saneada.
+
+    Raises:
+        ValueError: si la URL es vacía o no empieza por http:// o https://
+    """
+    if not isinstance(url, str):
+        raise ValueError("URL inválida")
+    url = url.strip()
+    if not re.match(r"^https?://", url, re.IGNORECASE):
+        raise ValueError("URL inválida: debe empezar por http:// o https://")
+    return url
+
+
 # Error messages that indicate permanent failures (should NOT be retried)
 _PERMANENT_ERROR_PATTERNS = [
     "is not a valid url",
@@ -205,6 +221,7 @@ class VideoDownloader:
         Returns:
             Dict con información del video descargado
         """
+        url = validate_media_url(url)
         platform = self._get_platform(url)
         logger.info(f"Detected platform: {platform}")
 
@@ -340,6 +357,7 @@ class VideoDownloader:
                 '-o', output_template,
                 '--no-playlist',
                 '--retries', '10',
+                '--',
                 url
             ]
 

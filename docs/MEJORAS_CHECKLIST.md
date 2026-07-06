@@ -23,7 +23,7 @@
 
 ### 🟠 Alto
 
-- [ ] B7. Inyección de args a yt-dlp: URL de usuario como posicional sin `--` (downloader.py:336-346, tiktok_discover.py:314-319, viral_detector.py:374-381). Añadir `--` y validar esquema `https?://`.
+- [x] B7. Inyección de args a yt-dlp: URL de usuario como posicional sin `--` (downloader.py:336-346, tiktok_discover.py:314-319, viral_detector.py:374-381). Añadir `--` y validar esquema `https?://`. → Helper `validate_media_url()` en downloader.py (rechaza no-http y flags tipo `--exec=`); aplicado en `download()`, viral_detector.get_video_details y tiktok_discover.get_video_details; `--` agregado antes de la URL en los tres cmd CLI.
 - [ ] B8. Path traversal (Windows) en `/files/downloads/{filename}` y `/files/processed/{filename}` (app.py:1230-1245) y en `backup_name` (app.py:1498,1510,1517). Sanitizar con `Path(x).name` y verificar prefijo resuelto.
 - [ ] B9. `GET /api/backup/stats` (app.py:1527) registrado después de `GET /api/backup/{backup_name}` (1498) → 404 permanente. Mover antes de la ruta paramétrica.
 - [ ] B10. TLS deshabilitado: `no_check_certificates: True` (downloader.py:126,402) y `--no-check-certificates` (338). Quitar salvo flag explícito.
