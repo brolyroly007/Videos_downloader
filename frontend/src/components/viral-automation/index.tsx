@@ -190,7 +190,7 @@ export function ViralAutomation() {
       return
     }
 
-    const jobId = `job_${Date.now()}`
+    const jobId = `job_${crypto.randomUUID()}`
     const currentUrl = url
     const currentDescription = description
     const currentVideoInfo = videoInfo

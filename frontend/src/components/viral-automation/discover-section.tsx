@@ -95,6 +95,7 @@ export function DiscoverSection({ onAddToQueue }: DiscoverSectionProps) {
   const [videos, setVideos] = useState<DiscoveredVideo[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [failedThumbs, setFailedThumbs] = useState<Set<string>>(new Set())
 
   const formatCount = (num: number): string => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
@@ -254,24 +255,20 @@ export function DiscoverSection({ onAddToQueue }: DiscoverSectionProps) {
                     <div className="flex gap-3">
                       {/* Thumbnail con imagen real */}
                       <div className="w-20 h-28 md:w-24 md:h-32 bg-gray-900 flex-shrink-0 flex items-center justify-center relative overflow-hidden border border-gray-700">
-                        {video.thumbnail ? (
+                        {video.thumbnail && !failedThumbs.has(video.id) ? (
                           <img
                             src={video.thumbnail}
                             alt={video.title}
                             className="w-full h-full object-cover"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement
-                              target.style.display = 'none'
-                              target.nextElementSibling?.classList.remove('hidden')
-                            }}
+                            onError={() =>
+                              setFailedThumbs((prev) => new Set(prev).add(video.id))
+                            }
                           />
-                        ) : null}
-                        <div className={cn(
-                          "absolute inset-0 flex items-center justify-center bg-gray-900",
-                          video.thumbnail ? "hidden" : ""
-                        )}>
-                          <ImageOff className="size-8 text-gray-700" />
-                        </div>
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                            <ImageOff className="size-8 text-gray-700" />
+                          </div>
+                        )}
                         {/* Duración */}
                         <div className="absolute bottom-1 right-1 bg-black/90 px-1.5 py-0.5 text-[10px] text-white font-medium">
                           {formatDuration(video.duration)}

@@ -91,8 +91,8 @@
 - [x] F13. Sin validación real de URL (index.tsx:107,125). Validar formato/plataforma. → Helper `isSupportedUrl` (parsea con `new URL`, exige http(s) y host de TikTok/Instagram/YouTube/Facebook); usado en `handlePreview` y `handleProcess` con toast de error antes de llamar al backend. `tsc` pasa.
 - [x] F14. Límite mágico `5` duplicado (index.tsx:78, input-section.tsx:73). Extraer constante compartida. → Nueva `MAX_CONCURRENT_JOBS` en `@/lib/constants`, usada en index.tsx (canAddMore + mensaje) e input-section.tsx (canAddMore + "Add up to N more"). `tsc` pasa.
 - [x] F15. `selectedJob` inconsistente tras borrar (index.tsx:75 vs processing-history.tsx:69). → `handleDeleteJob` ahora, al borrar el job seleccionado, selecciona el siguiente disponible (`remaining[0]?.id ?? null`) dentro del updater de `setJobs`, así el panel y el resaltado del historial coinciden. `tsc` pasa.
-- [ ] F16. IDs de job con `Date.now()` (index.tsx:140). Usar `crypto.randomUUID()`.
-- [ ] F17. Manipulación directa del DOM en onError de imagen (discover-section.tsx:277-281). Usar estado `imgError` por ítem.
+- [x] F16. IDs de job con `Date.now()` (index.tsx:140). Usar `crypto.randomUUID()`. → `jobId = job_${crypto.randomUUID()}`. (Los otros `Date.now()` son timing del deadline de polling, no IDs.) `tsc` pasa.
+- [x] F17. Manipulación directa del DOM en onError de imagen (discover-section.tsx:277-281). Usar estado `imgError` por ítem. → Estado `failedThumbs` (Set de ids); el `onError` agrega el id y el render muestra el fallback `ImageOff` de forma declarativa, sin tocar `style`/`classList`/`nextElementSibling`. `tsc` pasa.
 - [ ] F18. `<img>` en vez de `next/image` (input-section.tsx:121, discover-section.tsx:273) y `next.config.ts` con `hostname: '**'`. Restringir a CDNs reales.
 - [ ] F19. Accesibilidad: labels sin `htmlFor`, botones icon-only sin `aria-label`, toast sin `aria-live`, resizer sin teclado/rol, filas sin `role="button"`, `select-none` global que impide copiar.
 - [ ] F20. i18n inconsistente (inglés/español mezclados; `lang="en"` en layout.tsx:28). Unificar.
