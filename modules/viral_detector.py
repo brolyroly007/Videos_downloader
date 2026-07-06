@@ -72,7 +72,10 @@ class ViralDetector:
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(exist_ok=True)
         self.seen_videos: Dict[str, datetime] = {}  # video_id -> first_seen
+        self.seen_videos_max = 5000  # cota superior para no crecer sin límite
         self.browser: Optional[Browser] = None
+        self.playwright = None  # handle de async_playwright para poder .stop()
+        self._monitoring = False  # controla el bucle de monitor_hashtags
 
         # Configuración de umbrales de viralidad
         self.viral_thresholds = {
@@ -122,18 +125,21 @@ class ViralDetector:
             return False
 
         if self.browser is None:
-            playwright = await async_playwright().start()
-            self.browser = await playwright.chromium.launch(
+            self.playwright = await async_playwright().start()
+            self.browser = await self.playwright.chromium.launch(
                 headless=True,
                 args=['--no-sandbox', '--disable-setuid-sandbox']
             )
         return True
 
     async def close_browser(self):
-        """Cierra el browser"""
+        """Cierra el browser y detiene el driver de Playwright (evita proceso node huérfano)."""
         if self.browser:
             await self.browser.close()
             self.browser = None
+        if self.playwright:
+            await self.playwright.stop()
+            self.playwright = None
 
     def calculate_viral_score(self, video: Dict, platform: str) -> float:
         """
@@ -258,6 +264,11 @@ class ViralDetector:
 
             # Extraer datos de videos
             video_elements = await page.query_selector_all('[data-e2e="challenge-item"]')
+            if not video_elements:
+                logger.warning(
+                    "0 videos encontrados con el selector '[data-e2e=\"challenge-item\"]'. "
+                    "TikTok pudo cambiar su DOM o requiere login/captcha."
+                )
 
             for i, element in enumerate(video_elements[:limit]):
                 try:
@@ -320,6 +331,7 @@ class ViralDetector:
                         )
                         videos.append(viral_video)
                         self.seen_videos[video_id] = datetime.now()
+                        self._prune_seen_videos()
 
                 except Exception as e:
                     logger.debug(f"Error parsing video element: {e}")
@@ -436,11 +448,24 @@ class ViralDetector:
             viral_score=viral_score
         )
 
+    def _prune_seen_videos(self):
+        """Mantiene `seen_videos` acotado: si supera el máximo, descarta los más antiguos."""
+        if len(self.seen_videos) <= self.seen_videos_max:
+            return
+        # Ordenar por fecha de primera vez y conservar solo los más recientes
+        keep = sorted(self.seen_videos.items(), key=lambda kv: kv[1], reverse=True)[:self.seen_videos_max]
+        self.seen_videos = dict(keep)
+
+    def stop_monitoring(self):
+        """Detiene el bucle de monitor_hashtags de forma ordenada."""
+        self._monitoring = False
+
     async def monitor_hashtags(
         self,
         hashtags: List[str],
         interval_minutes: int = 30,
-        callback = None
+        callback = None,
+        max_iterations: Optional[int] = None
     ):
         """
         Monitorea hashtags continuamente y notifica nuevos videos virales
@@ -449,10 +474,17 @@ class ViralDetector:
             hashtags: Lista de hashtags a monitorear
             interval_minutes: Intervalo entre escaneos
             callback: Función async a llamar cuando se detecta video viral
+            max_iterations: Nº máximo de escaneos (None = hasta stop_monitoring()).
         """
         logger.info(f"Starting hashtag monitoring: {hashtags}")
 
-        while True:
+        self._monitoring = True
+        iterations = 0
+        while self._monitoring:
+            if max_iterations is not None and iterations >= max_iterations:
+                logger.info("monitor_hashtags: alcanzado max_iterations, deteniendo.")
+                break
+            iterations += 1
             try:
                 for hashtag in hashtags:
                     videos = await self.scrape_tiktok_trending(hashtag, limit=20)
