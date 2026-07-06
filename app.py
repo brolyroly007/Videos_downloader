@@ -1245,10 +1245,27 @@ async def check_tiktok_session():
 
 
 # Servir archivos de video
+def _safe_file_in_dir(base_dir: str, filename: str) -> Path:
+    """
+    Resuelve `filename` dentro de `base_dir` impidiendo path traversal.
+    En Windows normaliza tanto `/` como `\\`. Devuelve la ruta validada
+    o lanza HTTPException 400/404.
+    """
+    base = Path(base_dir).resolve()
+    # Quedarse solo con el nombre base evita ../, ..\\ y rutas absolutas
+    safe_name = Path(filename.replace("\\", "/")).name
+    if not safe_name or safe_name in (".", ".."):
+        raise HTTPException(status_code=400, detail="Nombre de archivo inválido")
+    target = (base / safe_name).resolve()
+    if target != base and base not in target.parents:
+        raise HTTPException(status_code=400, detail="Ruta no permitida")
+    return target
+
+
 @app.get("/files/downloads/{filename}")
 async def serve_download(filename: str):
     """Sirve archivos descargados"""
-    file_path = Path("downloads") / filename
+    file_path = _safe_file_in_dir("downloads", filename)
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(file_path)
@@ -1257,7 +1274,7 @@ async def serve_download(filename: str):
 @app.get("/files/processed/{filename}")
 async def serve_processed(filename: str):
     """Sirve archivos procesados"""
-    file_path = Path("processed") / filename
+    file_path = _safe_file_in_dir("processed", filename)
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(file_path)
@@ -1513,6 +1530,16 @@ async def list_backups():
     })
 
 
+@app.get("/api/backup/stats")
+async def get_backup_stats():
+    """Obtiene estadísticas de backups"""
+    stats = backup_manager.get_backup_stats()
+    return JSONResponse({
+        "success": True,
+        "stats": stats
+    })
+
+
 @app.get("/api/backup/{backup_name}")
 async def get_backup_info(backup_name: str):
     """Obtiene información de un backup"""
@@ -1540,16 +1567,6 @@ async def delete_backup(backup_name: str, _admin=Depends(require_role("admin")))
     return JSONResponse({
         "success": success,
         "message": "Backup eliminado" if success else "No se pudo eliminar"
-    })
-
-
-@app.get("/api/backup/stats")
-async def get_backup_stats():
-    """Obtiene estadísticas de backups"""
-    stats = backup_manager.get_backup_stats()
-    return JSONResponse({
-        "success": True,
-        "stats": stats
     })
 
 
