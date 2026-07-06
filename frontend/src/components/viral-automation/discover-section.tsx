@@ -100,15 +100,19 @@ export function DiscoverSection({ onAddToQueue }: DiscoverSectionProps) {
     setError(null)
 
     try {
-      // Usar el nuevo endpoint de discover que usa yt-dlp para datos reales
+      // Endpoint de discover que usa yt-dlp para datos reales
       const response = await fetch(`${API_BASE_URL}/api/discover/${categoryId}?limit=12`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       })
 
+      if (!response.ok) {
+        throw new Error(`El servidor respondió ${response.status}`)
+      }
+
       const data = await response.json()
 
-      if (data.success && data.videos && data.videos.length > 0) {
+      if (data.success && Array.isArray(data.videos) && data.videos.length > 0) {
         const mappedVideos: DiscoveredVideo[] = data.videos.map((v: any) => ({
           id: v.id,
           url: v.url,
@@ -128,55 +132,18 @@ export function DiscoverSection({ onAddToQueue }: DiscoverSectionProps) {
         setVideos(mappedVideos)
         setError(null)
       } else {
-        // Si no hay videos, mostrar datos de ejemplo
-        setVideos(generateMockVideos(categoryId, category.name))
-        setError('No se encontraron videos reales - mostrando ejemplos')
+        // No se fabrican videos falsos: sus URLs no existen y romperían "Procesar".
+        setVideos([])
+        setError('No se encontraron videos para esta categoría.')
       }
     } catch (err) {
       console.error('Error fetching videos:', err)
-      // Mostrar datos de ejemplo si falla la conexión
-      const category = CATEGORIES.find(c => c.id === categoryId)
-      setVideos(generateMockVideos(categoryId, category?.name || ''))
-      setError('Backend no disponible - mostrando ejemplos')
+      setVideos([])
+      setError('No se pudieron cargar los videos (backend no disponible o error).')
     } finally {
       setLoading(false)
     }
   }, [])
-
-  // Generar videos de ejemplo cuando no hay backend
-  const generateMockVideos = (categoryId: string, categoryName: string): DiscoveredVideo[] => {
-    const mockTitles: Record<string, string[]> = {
-      cats: ["Gatito haciendo travesuras 😂", "Mi gato vs el pepino", "Gato cantando ópera", "Reacción de gato a su reflejo"],
-      dogs: ["Perrito bailando cumbia", "Golden retriever en la playa", "Cachorro conoce a bebé", "Perro más feliz del mundo"],
-      funny: ["No puedo dejar de reír 😂", "Fails de la semana", "Expectativa vs Realidad", "Humor random que cura"],
-      music: ["Cover increíble", "Baile viral del momento", "Remix que necesitabas", "Talento oculto"],
-      fitness: ["Rutina de 10 minutos", "Transformación increíble", "Ejercicios en casa", "Motivación fitness"],
-      food: ["Receta viral fácil", "Street food asiática", "Comida satisfactoria", "Cocina en 1 minuto"],
-      beauty: ["Makeup transformation", "Skincare routine", "GRWM viral", "Tips de belleza"],
-      gaming: ["Jugada épica", "Fail gracioso gaming", "Speedrun increíble", "Momento clutch"],
-      babies: ["Bebé riéndose", "Primera palabra", "Bebé vs mascota", "Momento tierno"],
-      cars: ["Supercar en la calle", "Sonido de motor", "Detailing satisfactorio", "Car meet viral"],
-      travel: ["Lugar secreto", "Vista increíble", "Viaje barato", "Destino soñado"],
-      lifestyle: ["Un día conmigo", "Room tour aesthetic", "Rutina de mañana", "Life hack viral"],
-    }
-
-    const titles = mockTitles[categoryId] || ["Video viral trending"]
-
-    return titles.map((title, i) => ({
-      id: `mock_${categoryId}_${i}`,
-      url: `https://www.tiktok.com/@example/video/${Date.now() + i}`,
-      title,
-      author: `@creator_${categoryId}`,
-      thumbnail: '',
-      views: Math.floor(Math.random() * 5000000) + 100000,
-      likes: Math.floor(Math.random() * 500000) + 10000,
-      comments: Math.floor(Math.random() * 10000) + 500,
-      duration: Math.floor(Math.random() * 45) + 15,
-      viral_score: Math.floor(Math.random() * 40) + 50,
-      platform: 'tiktok',
-      category: categoryId
-    }))
-  }
 
   const getScoreColor = (score: number) => {
     if (score >= 70) return "text-green-400"
