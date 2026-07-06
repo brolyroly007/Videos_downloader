@@ -1093,7 +1093,7 @@ async def auto_flow_endpoint(request: AutoFlowRequest, background_tasks: Backgro
                     category=request.category,
                     language="es"
                 )
-                final_description = desc_result.full_description if hasattr(desc_result, 'full_description') else str(desc_result)
+                final_description = getattr(desc_result, 'full_text', None) or str(desc_result)
             except Exception as desc_err:
                 logger.warning(f"[AutoFlow {task_id}] Description generation failed: {desc_err}")
                 # Descripción por defecto
