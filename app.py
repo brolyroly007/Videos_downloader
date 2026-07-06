@@ -16,7 +16,7 @@ import uuid
 import time
 from typing import Optional
 import logging
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # Importar módulos personalizados
 from modules.downloader import VideoDownloader
@@ -148,7 +148,7 @@ class VideoProcessRequest(BaseModel):
     background_color: str = "#000000"  # Hex color
     apply_mirror: bool = True
     apply_speed: bool = True
-    speed_factor: float = 1.02
+    speed_factor: float = Field(1.02, ge=0.5, le=2.0)
     apply_color_adjust: bool = True
     generate_subtitles: bool = True
     subtitle_language: Optional[str] = "es"
@@ -169,7 +169,7 @@ class CompleteFlowRequest(BaseModel):
     background_color: str = "#000000"
     apply_mirror: bool = True
     apply_speed: bool = True
-    speed_factor: float = 1.02
+    speed_factor: float = Field(1.02, ge=0.5, le=2.0)
     generate_subtitles: bool = True
     subtitle_language: Optional[str] = "es"
     burn_subtitles: bool = True
@@ -178,8 +178,16 @@ class CompleteFlowRequest(BaseModel):
 
 # Función para convertir hex a RGB
 def hex_to_rgb(hex_color: str) -> tuple:
-    hex_color = hex_color.lstrip('#')
-    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+    """Convierte un color hex (#RRGGBB o #RGB) a tupla RGB.
+
+    Lanza HTTPException 400 ante un valor malformado en vez de un 500.
+    """
+    value = (hex_color or "").strip().lstrip('#')
+    if len(value) == 3:  # forma corta #abc -> #aabbcc
+        value = "".join(c * 2 for c in value)
+    if len(value) != 6 or any(c not in "0123456789abcdefABCDEF" for c in value):
+        raise HTTPException(status_code=400, detail=f"Color hex inválido: {hex_color!r}")
+    return tuple(int(value[i:i+2], 16) for i in (0, 2, 4))
 
 
 # Rutas
@@ -709,12 +717,15 @@ async def scan_viral_videos(request: ScanRequest):
     """
     try:
         logger.info(f"Scanning hashtags: {request.hashtags}")
+        if not request.hashtags:
+            raise HTTPException(status_code=400, detail="Debes indicar al menos un hashtag")
         all_videos = []
 
+        per_hashtag = max(1, request.limit // len(request.hashtags))
         for hashtag in request.hashtags:
             videos = await viral_detector.scrape_tiktok_trending(
                 hashtag=hashtag,
-                limit=request.limit // len(request.hashtags)
+                limit=per_hashtag
             )
             all_videos.extend(videos)
 

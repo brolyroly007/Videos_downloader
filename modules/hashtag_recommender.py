@@ -437,13 +437,15 @@ class HashtagRecommender:
 
         conn.close()
 
+        avg_trending = avg_score / found if found > 0 else 0
+
         return {
             "total_hashtags": len(hashtags),
             "found_in_db": found,
             "estimated_reach": total_views,
             "competition_level": "high" if total_posts > 50000000 else "medium" if total_posts > 10000000 else "low",
-            "avg_trending_score": avg_score / found if found > 0 else 0,
-            "recommendation": "good" if avg_score / found > 70 else "moderate" if avg_score / found > 50 else "weak"
+            "avg_trending_score": avg_trending,
+            "recommendation": "good" if avg_trending > 70 else "moderate" if avg_trending > 50 else "weak"
         }
 
     def suggest_improvements(self, current_hashtags: List[str], category: str) -> Dict:
