@@ -83,6 +83,10 @@ auth_manager = AuthManager(enabled=os.getenv("AUTH_ENABLED", "false").lower() ==
 # Diccionario para almacenar el estado de las tareas
 tasks_status = {}
 
+# En contenedores no hay display: el upload debe correr headless.
+# Configurable con TIKTOK_HEADLESS (default false para uso local con navegador).
+TIKTOK_HEADLESS = os.getenv("TIKTOK_HEADLESS", "false").lower() == "true"
+
 TASK_MAX_AGE_SECONDS = 24 * 60 * 60  # 24 hours
 
 # --- Concurrency limiters ---
@@ -490,7 +494,7 @@ async def complete_flow_endpoint(request: CompleteFlowRequest, background_tasks:
             upload_result = await uploader.upload_video(
                 video_path=final_video,
                 description=request.description,
-                headless=False
+                headless=TIKTOK_HEADLESS
             )
 
             tasks_status[task_id]['data']['upload_result'] = upload_result

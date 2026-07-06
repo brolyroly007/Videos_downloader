@@ -12,8 +12,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     wget \
-    chromium \
-    chromium-driver \
     fonts-liberation \
     libasound2 \
     libatk-bridge2.0-0 \
@@ -44,9 +42,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Instalar Playwright browsers
-RUN playwright install chromium && \
-    playwright install-deps chromium
+# Instalar Playwright browsers en una ruta compartida legible por appuser
+# (si se instalan en /root/.cache el usuario no-root no los encuentra).
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN playwright install --with-deps chromium && \
+    chmod -R a+rX /ms-playwright
 
 # Copiar código fuente
 COPY . .
@@ -66,6 +66,8 @@ EXPOSE 8000
 ENV HOST=0.0.0.0
 ENV PORT=8000
 ENV WHISPER_MODEL_SIZE=base
+# En contenedor no hay display: el navegador de subida debe correr headless
+ENV TIKTOK_HEADLESS=true
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

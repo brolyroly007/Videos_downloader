@@ -4,6 +4,7 @@ Coordina detección, procesamiento y publicación de videos virales
 """
 
 import asyncio
+import os
 import json
 import sqlite3
 import logging
@@ -697,7 +698,7 @@ class AutomationEngine:
             result = await self.uploader.upload_video(
                 video_path=job.processed_video_path,
                 description=job.tiktok_description,
-                headless=False
+                headless=os.getenv("TIKTOK_HEADLESS", "false").lower() == "true"
             )
 
             if result['success']:
