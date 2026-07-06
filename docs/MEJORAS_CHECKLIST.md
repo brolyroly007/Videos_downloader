@@ -82,7 +82,7 @@
 - [x] F7. Toast casero sin cleanup ni solapamiento (index.tsx:80-83) + doble sistema (sonner montado y nunca usado, layout.tsx:39). Migrar a sonner, borrar ToastNotification. → `showToast` ahora usa `sonner` (`toast.success`/`toast.error`, ya montado en layout); eliminados el estado `toast`, el render y el componente `toast-notification.tsx`. `tsc --noEmit` pasa.
 - [x] F8. ~700 líneas muertas/duplicadas en `src/components/dashboard/` (video-processor.tsx duplica index.tsx; header/stats-cards/file-list no se importan). Eliminar o consolidar. → Eliminado todo `src/components/dashboard/` (file-list, header, stats-cards, video-processor): nada los importaba (page.tsx usa ViralAutomation). `tsc --noEmit` pasa.
 - [x] F9. `discover-section.tsx:103-139` no valida `response.ok` y cae a `generateMockVideos()` (videos falsos que rompen "Procesar"). Mostrar error real y quitar mocks. → Ahora valida `response.ok` (throw si falla) y, ante error o lista vacía, muestra un mensaje real con lista vacía; eliminada la función `generateMockVideos` y sus URLs de TikTok inexistentes. `tsc --noEmit` pasa.
-- [ ] F10. Errores de polling invisibles (solo `console.error`: index.tsx:94-96, file-list.tsx:51-53, stats-cards.tsx:27-29). Mostrar estado de error; pausar con `document.visibilityState`.
+- [x] F10. Errores de polling invisibles (solo `console.error`: index.tsx:94-96, file-list.tsx:51-53, stats-cards.tsx:27-29). Mostrar estado de error; pausar con `document.visibilityState`. → `fetchFiles` setea `backendError` (aviso `role=status` fijo arriba) y lo limpia al reconectar; el intervalo solo sondea con `document.visibilityState === "visible"` y refresca al volver la pestaña. (file-list/stats-cards eran de dashboard/, ya borrado en F8.) `tsc` pasa.
 
 ### 🟡 Medio
 

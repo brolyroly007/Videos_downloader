@@ -52,6 +52,7 @@ export function ViralAutomation() {
   // Files
   const [downloadedFiles, setDownloadedFiles] = useState<FileInfo[]>([])
   const [processedFiles, setProcessedFiles] = useState<FileInfo[]>([])
+  const [backendError, setBackendError] = useState<string | null>(null)
 
   // UI state
   const [leftWidth, setLeftWidth] = useState(50)
@@ -91,15 +92,25 @@ export function ViralAutomation() {
       ])
       setDownloadedFiles(downloads.files)
       setProcessedFiles(processed.files)
+      setBackendError(null)
     } catch (error) {
       console.error("Error fetching files:", error)
+      setBackendError("No se pudo conectar con el servidor. Reintentando…")
     }
   }, [])
 
   useEffect(() => {
-    fetchFiles()
-    const interval = setInterval(fetchFiles, 10000)
-    return () => clearInterval(interval)
+    // Solo sondear con la pestaña visible: evita peticiones en segundo plano.
+    const tick = () => {
+      if (document.visibilityState === "visible") fetchFiles()
+    }
+    tick()
+    const interval = setInterval(tick, 10000)
+    document.addEventListener("visibilitychange", tick)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener("visibilitychange", tick)
+    }
   }, [fetchFiles])
 
   // Preview video. Se cancela la request anterior para que una respuesta lenta
@@ -350,6 +361,17 @@ export function ViralAutomation() {
 
   return (
     <div className="bg-background min-h-screen flex items-center justify-center select-none">
+
+      {/* Aviso de backend caído */}
+      {backendError && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed top-0 inset-x-0 z-50 bg-red-950/90 border-b border-red-600 text-red-200 text-sm text-center py-2 px-4"
+        >
+          {backendError}
+        </div>
+      )}
 
       {/* Shader Background */}
       <div className="fixed inset-0 z-0 select-none shader-background bg-black">
