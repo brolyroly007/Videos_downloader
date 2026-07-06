@@ -23,11 +23,13 @@ except ImportError:
 # MoviePy 2.x API
 try:
     from moviepy import VideoFileClip, TextClip, CompositeVideoClip
+    from moviepy.video.tools.subtitles import SubtitlesClip
     MOVIEPY_AVAILABLE = True
 except ImportError:
     VideoFileClip = None
     TextClip = None
     CompositeVideoClip = None
+    SubtitlesClip = None
     MOVIEPY_AVAILABLE = False
     logging.warning("MoviePy not available - video processing disabled")
 
