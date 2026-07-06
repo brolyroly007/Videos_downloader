@@ -101,21 +101,33 @@ export function ViralAutomation() {
     return () => clearInterval(interval)
   }, [fetchFiles])
 
-  // Preview video
+  // Preview video. Se cancela la request anterior para que una respuesta lenta
+  // de una URL previa no sobrescriba el videoInfo de la URL actual (race).
+  const previewAbortRef = useRef<AbortController | null>(null)
   const handlePreview = useCallback(async () => {
     if (!url.trim()) return
 
+    previewAbortRef.current?.abort()
+    const controller = new AbortController()
+    previewAbortRef.current = controller
+
     setPreviewLoading(true)
     try {
-      const info = await api.getVideoInfo(url)
+      const info = await api.getVideoInfo(url, controller.signal)
+      // Si otra preview la reemplazó mientras tanto, ignorar este resultado.
+      if (controller.signal.aborted) return
       setVideoInfo(info)
       if (info.success) {
         showToast("Video info loaded", "success")
       }
     } catch (error: any) {
+      if (error?.name === "AbortError") return // cancelada por una preview más nueva
       showToast(error.message || "Failed to get video info", "error")
     } finally {
-      setPreviewLoading(false)
+      if (previewAbortRef.current === controller) {
+        setPreviewLoading(false)
+        previewAbortRef.current = null
+      }
     }
   }, [url, showToast])
 

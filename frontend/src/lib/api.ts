@@ -95,8 +95,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 // ---- API ----
 
 export const api = {
-  getVideoInfo(url: string): Promise<VideoInfo> {
-    return request<VideoInfo>(`/api/video-info?url=${encodeURIComponent(url)}`)
+  getVideoInfo(url: string, signal?: AbortSignal): Promise<VideoInfo> {
+    return request<VideoInfo>(`/api/video-info?url=${encodeURIComponent(url)}`, { signal })
   },
 
   getDownloadedFiles(): Promise<FileListResponse> {
