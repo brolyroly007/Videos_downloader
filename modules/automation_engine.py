@@ -367,8 +367,12 @@ class ScheduleManager:
         self.uploads_this_hour += 1
 
 
-class DescriptionGenerator:
-    """Genera descripciones optimizadas para TikTok"""
+class TikTokDescriptionGenerator:
+    """Genera descripciones optimizadas para TikTok (uso interno del engine).
+
+    Distinto de modules.description_generator.DescriptionGenerator, que es
+    async y devuelve un dataclass; esta versión es síncrona y devuelve str.
+    """
 
     def __init__(self):
         # Hashtags por categoría
@@ -463,7 +467,7 @@ class AutomationEngine:
         # Managers
         self.db = AutomationDatabase()
         self.scheduler = ScheduleManager()
-        self.desc_generator = DescriptionGenerator()
+        self.desc_generator = TikTokDescriptionGenerator()
 
         # Configuración
         self.config = {

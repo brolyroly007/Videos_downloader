@@ -791,9 +791,9 @@ async def analyze_video_url(url: str):
 
 
 @app.post("/api/automation/queue/add")
-async def add_to_queue(request: AddToQueueRequest):
+async def add_to_automation_queue(request: AddToQueueRequest):
     """
-    Agrega un video a la cola de procesamiento
+    Agrega un video a la cola de automatización (AutomationEngine)
     """
     try:
         # Verificar si ya existe
@@ -1521,8 +1521,8 @@ class QueueJobRequest(BaseModel):
 
 
 @app.post("/api/queue/add")
-async def add_to_queue(request: QueueJobRequest):
-    """Agrega un video a la cola de procesamiento"""
+async def add_to_processing_queue(request: QueueJobRequest):
+    """Agrega un video a la cola de procesamiento (QueueManager)"""
     priority_map = {
         "low": JobPriority.LOW,
         "normal": JobPriority.NORMAL,
