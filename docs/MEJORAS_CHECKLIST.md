@@ -52,7 +52,7 @@
 
 ### 🟢 Bajo
 
-- [ ] B30. Config drift en .env.example/Dockerfile: variables documentadas que nadie lee (WHISPER_MODEL_SIZE, *_PATH, TIKTOK_*, DEFAULT_*, REDIS_URL) y faltan las reales (AUTH_ENABLED, MAX_DOWNLOAD_RETRIES, etc.). Migrar a `pydantic-settings` (ya en requirements).
+- [x] B30. Config drift en .env.example/Dockerfile: variables documentadas que nadie lee (WHISPER_MODEL_SIZE, *_PATH, TIKTOK_*, DEFAULT_*, REDIS_URL) y faltan las reales (AUTH_ENABLED, MAX_DOWNLOAD_RETRIES, etc.). Migrar a `pydantic-settings` (ya en requirements). → `modules/config.py` expone un `Settings` (pydantic-settings) con las 14 vars reales + singleton `settings` (y constantes de compat MAX_DOWNLOAD_RETRIES/RETRY_BASE_DELAY/DOWNLOAD_TIMEOUT); `WHISPER_MODEL_SIZE` cableado en app.py (ya no fantasma); `.env.example` reescrito para reflejar solo las variables reales.
 - [ ] B31. Deps muertas/laxas: `selenium` sin uso (+100MB), `schedule` solo para scheduler apagado, `moviepy` cruza major, `yt-dlp`/`playwright` sin techo. Limpiar + lockfile.
 - [ ] B32. Duplicación: `DescriptionGenerator` x2, `JobStatus` x2, `add_to_queue` x2 (app.py:741 y 1410, F811), viral score duplicado con pesos distintos (viral_detector.py:138 vs tiktok_discover.py:656). Unificar.
 - [ ] B33. viral_detector: `async_playwright().start()` sin guardar (no `.stop()`, 125-126); `seen_videos` sin límite (74); selectores CSS rotos (260); `monitor_hashtags` `while True` sin parada (449).

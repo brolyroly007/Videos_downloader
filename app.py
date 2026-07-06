@@ -32,6 +32,7 @@ from modules.queue_manager import QueueManager, JobPriority
 from modules.hashtag_recommender import HashtagRecommender
 from modules.backup_manager import BackupManager
 from modules.auth import auth_manager, get_current_user, get_optional_user, require_role
+from modules.config import settings
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -308,7 +309,7 @@ async def process_video_endpoint(request: VideoProcessRequest):
             # Inicializar generador de subtítulos (carga Whisper)
             global subtitle_gen
             if subtitle_gen is None:
-                subtitle_gen = SubtitleGenerator(model_size="base")
+                subtitle_gen = SubtitleGenerator(model_size=settings.whisper_model_size)
 
             # Generar nombre de archivo para video con subs y archivo SRT
             base_name = Path(request.output_filename).stem
@@ -481,7 +482,7 @@ async def complete_flow_endpoint(request: CompleteFlowRequest, background_tasks:
 
                     global subtitle_gen
                     if subtitle_gen is None:
-                        subtitle_gen = SubtitleGenerator(model_size="base")
+                        subtitle_gen = SubtitleGenerator(model_size=settings.whisper_model_size)
 
                     base_name = Path(output_filename).stem
                     video_with_subs = str(processor.output_path / f"{base_name}_with_subs.mp4")
