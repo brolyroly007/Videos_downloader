@@ -185,7 +185,7 @@ class AnalyticsDatabase:
 
         return video_id
 
-    def record_upload(self, video_id: str, tiktok_url: str = None, success: bool = True, error: str = None):
+    def record_upload(self, video_id: str, tiktok_url: Optional[str] = None, success: bool = True, error: Optional[str] = None):
         """Registra una subida a TikTok"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -207,7 +207,7 @@ class AnalyticsDatabase:
 
         self._update_daily_metrics()
 
-    def _log_event(self, event_type: str, video_id: str = None, message: str = None, metadata: Dict = None):
+    def _log_event(self, event_type: str, video_id: Optional[str] = None, message: Optional[str] = None, metadata: Optional[Dict] = None):
         """Registra un evento en el log"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -382,7 +382,7 @@ class AnalyticsDatabase:
         conn.close()
         return results
 
-    def get_recent_videos(self, limit: int = 20, category: str = None, status: str = None) -> List[VideoStats]:
+    def get_recent_videos(self, limit: int = 20, category: Optional[str] = None, status: Optional[str] = None) -> List[VideoStats]:
         """Obtiene los videos más recientes"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -463,7 +463,7 @@ class AnalyticsDatabase:
         conn.close()
         return results
 
-    def get_events(self, event_type: str = None, limit: int = 50) -> List[Dict]:
+    def get_events(self, event_type: Optional[str] = None, limit: int = 50) -> List[Dict]:
         """Obtiene eventos/logs recientes"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -509,7 +509,7 @@ class AnalyticsManager:
         """Trackea un video procesado"""
         return self.db.record_processed_video(video_data)
 
-    def track_upload(self, video_id: str, tiktok_url: str = None, success: bool = True, error: str = None):
+    def track_upload(self, video_id: str, tiktok_url: Optional[str] = None, success: bool = True, error: Optional[str] = None):
         """Trackea una subida"""
         self.db.record_upload(video_id, tiktok_url, success, error)
 

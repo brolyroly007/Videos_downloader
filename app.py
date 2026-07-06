@@ -3,7 +3,7 @@ Main FastAPI Application
 Dashboard para automatización de contenido viral
 """
 
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, BackgroundTasks, Depends
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, BackgroundTasks, Depends, Query
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -1493,7 +1493,7 @@ async def get_daily_analytics(days: int = 7):
 
 
 @app.get("/api/analytics/videos")
-async def get_recent_videos_analytics(limit: int = 20, category: str = None, status: str = None):
+async def get_recent_videos_analytics(limit: int = Query(20, ge=1, le=200), category: Optional[str] = None, status: Optional[str] = None):
     """Obtiene videos recientes con analytics"""
     videos = analytics_manager.db.get_recent_videos(limit, category, status)
     return JSONResponse({
@@ -1562,7 +1562,7 @@ async def get_queue_status():
 
 
 @app.get("/api/queue/jobs")
-async def get_queue_jobs(status: str = None, limit: int = 50):
+async def get_queue_jobs(status: Optional[str] = None, limit: int = Query(50, ge=1, le=200)):
     """Obtiene los trabajos en la cola"""
     jobs = queue_manager.get_all_jobs(status, limit)
     return JSONResponse({

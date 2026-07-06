@@ -161,8 +161,8 @@ class QueueDatabase:
         finally:
             conn.close()
 
-    def update_job(self, job_id: str, status: str = None, progress: int = None,
-                   message: str = None, result: Dict = None, error: str = None):
+    def update_job(self, job_id: str, status: Optional[str] = None, progress: Optional[int] = None,
+                   message: Optional[str] = None, result: Optional[Dict] = None, error: Optional[str] = None):
         """Actualiza el estado de un trabajo"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -245,7 +245,7 @@ class QueueDatabase:
             "by_status": by_status
         }
 
-    def get_all_jobs(self, status: str = None, limit: int = 50) -> List[QueueJob]:
+    def get_all_jobs(self, status: Optional[str] = None, limit: int = 50) -> List[QueueJob]:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
@@ -378,7 +378,7 @@ class QueueWorker:
             self.db.update_job(job.id, status='failed', error=str(e), message=f"Error: {str(e)}")
             raise
 
-    def _progress_callback(self, progress: int, message: str, status: str = None):
+    def _progress_callback(self, progress: int, message: str, status: Optional[str] = None):
         """Callback para actualizar progreso"""
         if self._current_job:
             self.db.update_job(
@@ -411,7 +411,7 @@ class QueueManager:
 
     def add_job(self, url: str, platform: str = "unknown", title: str = "",
                 category: str = "default", priority: JobPriority = JobPriority.NORMAL,
-                video_info: Dict = None, options: Dict = None) -> str:
+                video_info: Optional[Dict] = None, options: Optional[Dict] = None) -> str:
         """Agrega un trabajo a la cola"""
         job = QueueJob(
             id=f"job_{uuid.uuid4().hex[:8]}",
@@ -451,7 +451,7 @@ class QueueManager:
         }
         return status
 
-    def get_all_jobs(self, status: str = None, limit: int = 50) -> List[Dict]:
+    def get_all_jobs(self, status: Optional[str] = None, limit: int = 50) -> List[Dict]:
         """Obtiene todos los trabajos"""
         jobs = self.db.get_all_jobs(status, limit)
         return [j.to_dict() for j in jobs]

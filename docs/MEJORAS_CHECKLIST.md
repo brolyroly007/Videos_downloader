@@ -62,7 +62,7 @@
 - [x] B37. CI: no instala ffmpeg, no ejecuta cobertura, sin escaneo de secretos (gitleaks), docker.yml con `push:false` y nombre viejo `proyectojudietha-*`. Completar. → ci.yml: instala ffmpeg, corre `pytest --cov` (modules+app, `-m "not slow"`) y añade job `secrets-scan` con gitleaks-action. docker.yml: tags renombrados a `videos-downloader-*` (se deja `push:false` porque no hay registry configurado). YAML validado.
 - [x] B38. `scripts/test_discover.py` y `scripts/test_yt.py`: tests manuales con `sys.path` hardcodeado y dataclass duplicado. Mover a tests/ o borrar. → Eliminados: eran scripts de debug con llamadas de red en vivo y `TikTokVideo` duplicado (no tests de pytest; no aptos para `tests/`). Nada los referenciaba.
 - [x] B39. hashtag_recommender.py:78-202 puebla `hashtags.db` con cifras inventadas servidas como reales. Marcar como estimado o quitar. → `_populate_initial_data` documenta que los conteos son estimaciones semilla estáticas (no tiempo real); `analyze_hashtags` incluye `data_source: "static_seed_estimate"` y una `note` aclaratoria en la respuesta.
-- [ ] B40. Tipado: `x: str = None` → `Optional[str]` (app.py:1377,1446; analytics.py:383; queue_manager.py:157,241); `limit`/`days` sin cota superior.
+- [x] B40. Tipado: `x: str = None` → `Optional[str]` (app.py:1377,1446; analytics.py:383; queue_manager.py:157,241); `limit`/`days` sin cota superior. → 23 anotaciones implícitas convertidas a `Optional[...]` en app.py/analytics.py/queue_manager.py; `limit` de `/api/analytics/recent-videos` y `/api/queue/jobs` acotado con `Query(ge=1, le=200)`.
 
 ---
 
