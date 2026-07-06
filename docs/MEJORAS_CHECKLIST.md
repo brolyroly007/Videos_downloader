@@ -36,7 +36,7 @@
 
 ### 🟡 Medio
 
-- [ ] B17. Timeout de descarga inútil: se revisa tras `extract_info` (downloader.py:293-298); re-descarga videos ya completados vía `@_retry_download`. Aplicar timeout real o quitarlo del reintento.
+- [x] B17. Timeout de descarga inútil: se revisa tras `extract_info` (downloader.py:293-298); re-descarga videos ya completados vía `@_retry_download`. Aplicar timeout real o quitarlo del reintento. → Eliminado el check post-descarga de `elapsed > DOWNLOAD_TIMEOUT` (y el `start_time`); el timeout real lo aplica `socket_timeout` durante la descarga, sin descartar un video ya bajado por haber tardado.
 - [ ] B18. Doble `AuthManager` (app.py:81 y auth.py:446). Consolidar en uno.
 - [ ] B19. Auth: lockout por username sin IP (DoS de `admin`, auth.py:380-385); hash no constant-time (139 → `hmac.compare_digest`); `login_attempts`/`sessions` sin límite y `cleanup_expired_sessions` (299) nunca llamado; `remaining` negativo (402).
 - [ ] B20. Crashes 500 por inputs: `avg_score/found` sin `found=0` (hashtag_recommender.py:446); `limit // len(hashtags)` con lista vacía (app.py:693); `hex_to_rgb` sin validar (app.py:175); `speed_factor` sin rango. Añadir validaciones/Pydantic.

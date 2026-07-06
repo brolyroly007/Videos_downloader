@@ -303,21 +303,15 @@ class VideoDownloader:
                     pass  # Never let callback errors break the download
 
         ydl_opts['progress_hooks'] = [progress_hook]
+        # El timeout real se aplica a nivel de socket: aborta conexiones
+        # estancadas durante la descarga. No se mide el tiempo total tras
+        # completar, porque descartar (y re-descargar) un video ya bajado
+        # solo por haber tardado es contraproducente.
         ydl_opts['socket_timeout'] = DOWNLOAD_TIMEOUT
-
-        # Descargar video with timeout via subprocess watchdog
-        start_time = time.monotonic()
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             logger.info(f"Starting download from: {url}")
             info = ydl.extract_info(url, download=True)
-
-            elapsed = time.monotonic() - start_time
-            if elapsed > DOWNLOAD_TIMEOUT:
-                raise TimeoutError(
-                    f"Download exceeded timeout of {DOWNLOAD_TIMEOUT}s "
-                    f"(took {elapsed:.0f}s)"
-                )
 
             if info is None:
                 raise Exception("Could not extract video information")
