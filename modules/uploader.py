@@ -264,11 +264,9 @@ class TikTokUploader:
                     logger.info("Clicking publish button...")
                     await publish_button.click()
 
-                    # Esperar confirmación
+                    # Esperar confirmación real de TikTok (varios intentos:
+                    # los videos grandes tardan en terminar de subir).
                     logger.info("Waiting for upload confirmation...")
-                    await asyncio.sleep(5)
-
-                    # Verificar si apareció mensaje de éxito
                     success_indicators = [
                         'text="Your video is being uploaded"',
                         'text="Tu video se está subiendo"',
@@ -277,14 +275,17 @@ class TikTokUploader:
                     ]
 
                     upload_success = False
-                    for indicator in success_indicators:
-                        try:
-                            element = await page.wait_for_selector(indicator, timeout=3000)
-                            if element:
-                                upload_success = True
-                                break
-                        except:
-                            continue
+                    for _ in range(6):  # ~30s en total (6 x 5s)
+                        for indicator in success_indicators:
+                            try:
+                                element = await page.wait_for_selector(indicator, timeout=5000)
+                                if element:
+                                    upload_success = True
+                                    break
+                            except Exception:
+                                continue
+                        if upload_success:
+                            break
 
                     if upload_success:
                         return {
@@ -292,9 +293,13 @@ class TikTokUploader:
                             'message': 'Video uploaded successfully to TikTok!'
                         }
                     else:
+                        # No se detectó confirmación: NO reportar éxito, para no
+                        # registrar métricas falsas ni marcar el job como completado.
+                        logger.warning("No se detectó confirmación de subida en TikTok")
                         return {
-                            'success': True,
-                            'message': 'Video upload initiated (confirmation pending)'
+                            'success': False,
+                            'pending': True,
+                            'error': 'No se pudo confirmar la publicación (sin indicador de éxito)'
                         }
 
                 else:
