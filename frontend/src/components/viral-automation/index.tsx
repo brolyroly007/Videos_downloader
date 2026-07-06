@@ -179,41 +179,80 @@ export function ViralAutomation() {
           auto_upload: autoUpload,
         }
 
-        // Update progress
         setJobs((prev) =>
           prev.map((j) =>
-            j.id === jobId ? { ...j, progress: 30, message: "Downloading video..." } : j
+            j.id === jobId ? { ...j, progress: 10, message: "Encolando..." } : j
           )
         )
 
-        const result = await api.processVideo(options)
+        // El backend arranca el pipeline en segundo plano y devuelve un task_id;
+        // el progreso real se consulta por polling en /api/task/{task_id}.
+        const started = await api.processVideo(options)
+        if (!started.success || !started.task_id) {
+          throw new Error(started.error || started.message || "No se pudo iniciar el procesamiento")
+        }
+        const taskId = started.task_id
 
-        if (result.success) {
+        // Mapea el mensaje del backend a un porcentaje aproximado.
+        const progressFor = (msg = ""): number => {
+          const m = msg.toLowerCase()
+          if (m.includes("upload") || m.includes("subiendo")) return 90
+          if (m.includes("subtitle") || m.includes("subtítulo")) return 75
+          if (m.includes("process") || m.includes("procesando")) return 60
+          if (m.includes("download") || m.includes("descarg")) return 35
+          return 15
+        }
+
+        const controller = new AbortController()
+        const POLL_MS = 2000
+        const MAX_MS = 15 * 60 * 1000 // no sondear indefinidamente
+        const deadline = Date.now() + MAX_MS
+
+        // Bucle de polling
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          if (Date.now() > deadline) {
+            controller.abort()
+            throw new Error("Tiempo de espera agotado esperando el procesamiento")
+          }
+          await new Promise((r) => setTimeout(r, POLL_MS))
+          const st = await api.getTaskStatus(taskId, controller.signal)
+
+          if (st.status === "completed") {
+            setJobs((prev) =>
+              prev.map((j) =>
+                j.id === jobId
+                  ? {
+                      ...j,
+                      status: "complete",
+                      progress: 100,
+                      message: "Completado!",
+                      result: {
+                        videoPath: st.data?.final_video,
+                        transcription: st.data?.transcription,
+                      },
+                    }
+                  : j
+              )
+            )
+            if (st.data?.transcription) setTranscription(st.data.transcription)
+            showToast(`Video procesado: ${currentVideoInfo?.title || "OK"}`, "success")
+            fetchFiles()
+            break
+          }
+
+          if (st.status === "failed" || st.status === "error") {
+            throw new Error(st.error || "El procesamiento falló")
+          }
+
+          // En progreso: reflejar el mensaje del backend
           setJobs((prev) =>
             prev.map((j) =>
               j.id === jobId
-                ? {
-                    ...j,
-                    status: "complete",
-                    progress: 100,
-                    message: "Completed!",
-                    result: {
-                      videoPath: result.data?.final_video,
-                      transcription: result.data?.transcription,
-                    },
-                  }
+                ? { ...j, progress: progressFor(st.progress), message: st.progress || "Procesando..." }
                 : j
             )
           )
-
-          if (result.data?.transcription) {
-            setTranscription(result.data.transcription)
-          }
-
-          showToast(`Video processed: ${currentVideoInfo?.title || 'Success'}`, "success")
-          fetchFiles()
-        } else {
-          throw new Error(result.error || "Processing failed")
         }
       } catch (error: any) {
         setJobs((prev) =>

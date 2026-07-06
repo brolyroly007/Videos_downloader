@@ -57,6 +57,17 @@ export interface ProcessResult {
   error?: string
 }
 
+export interface TaskStatus {
+  status: string // started | completed | failed | error | ...
+  progress?: string // mensaje legible del backend
+  data?: {
+    final_video?: string
+    transcription?: string
+    [key: string]: unknown
+  }
+  error?: string
+}
+
 interface FileListResponse {
   files: FileInfo[]
 }
@@ -101,6 +112,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify(options),
     })
+  },
+
+  getTaskStatus(taskId: string, signal?: AbortSignal): Promise<TaskStatus> {
+    return request<TaskStatus>(`/api/task/${encodeURIComponent(taskId)}`, { signal })
   },
 
   clearSession(): Promise<{ success: boolean; message?: string }> {
