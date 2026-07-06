@@ -77,7 +77,7 @@
 ### 🟠 Alto
 
 - [x] F4. Progreso de jobs falso: salta a 30% hardcodeado y un único `await` de minutos sin job id/polling/`AbortController` (index.tsx:183-189; video-processor.tsx:93-129). Implementar polling real del estado. → `api.getTaskStatus(taskId, signal)` + tipo `TaskStatus`; `processVideo` ahora devuelve el `task_id` inmediato (backend en background, B21) y `processAsync` hace polling real de `/api/task/{id}` cada 2s con `AbortController` y timeout de 15min, mapeando el mensaje del backend a % (descarga/proceso/subtítulos/upload). `tsc --noEmit` pasa. (video-processor.tsx es código muerto que borra F8.)
-- [ ] F5. Estado `transcription` global compartido entre jobs (race, index.tsx:209-211). Usar `job.result.transcription` y eliminar el global.
+- [x] F5. Estado `transcription` global compartido entre jobs (race, index.tsx:209-211). Usar `job.result.transcription` y eliminar el global. → Eliminado el estado global `transcription`/`setTranscription` de index.tsx y sus props; OutputSection deriva `selectedJob?.result?.transcription`. La transcripción ya se guarda por job. `tsc --noEmit` pasa.
 - [ ] F6. Race en Preview sin `AbortController`/token de secuencia (index.tsx:106-121).
 - [ ] F7. Toast casero sin cleanup ni solapamiento (index.tsx:80-83) + doble sistema (sonner montado y nunca usado, layout.tsx:39). Migrar a sonner, borrar ToastNotification.
 - [ ] F8. ~700 líneas muertas/duplicadas en `src/components/dashboard/` (video-processor.tsx duplica index.tsx; header/stats-cards/file-list no se importan). Eliminar o consolidar.

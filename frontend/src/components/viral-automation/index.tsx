@@ -48,7 +48,6 @@ export function ViralAutomation() {
   // Jobs history
   const [jobs, setJobs] = useState<ProcessingJob[]>([])
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
-  const [transcription, setTranscription] = useState("")
 
   // Files
   const [downloadedFiles, setDownloadedFiles] = useState<FileInfo[]>([])
@@ -235,7 +234,6 @@ export function ViralAutomation() {
                   : j
               )
             )
-            if (st.data?.transcription) setTranscription(st.data.transcription)
             showToast(`Video procesado: ${currentVideoInfo?.title || "OK"}`, "success")
             fetchFiles()
             break
@@ -282,7 +280,6 @@ export function ViralAutomation() {
     setUrl("")
     setDescription("")
     setVideoInfo(null)
-    setTranscription("")
   }, [])
 
   // Delete job
@@ -484,8 +481,6 @@ export function ViralAutomation() {
                     >
                       <OutputSection
                         selectedJob={selectedJob}
-                        transcription={transcription}
-                        setTranscription={setTranscription}
                         downloadedFiles={downloadedFiles}
                         processedFiles={processedFiles}
                       />

@@ -21,21 +21,21 @@ import { cn } from "@/lib/utils"
 
 interface OutputSectionProps {
   selectedJob?: ProcessingJob
-  transcription: string
-  setTranscription: (text: string) => void
   downloadedFiles: FileInfo[]
   processedFiles: FileInfo[]
 }
 
 export function OutputSection({
   selectedJob,
-  transcription,
-  setTranscription,
   downloadedFiles,
   processedFiles,
 }: OutputSectionProps) {
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState("preview")
+
+  // La transcripción pertenece al job seleccionado (no a un estado global que
+  // el último job en completar sobrescribiría).
+  const transcription = selectedJob?.result?.transcription ?? ""
 
   const copyTranscription = async () => {
     if (transcription) {
