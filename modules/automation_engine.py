@@ -577,7 +577,10 @@ class AutomationEngine:
             job.status = JobStatus.DOWNLOADING
             self.db.update_job(job)
 
-            download_result = self.downloader.download(job.video_url)
+            loop = asyncio.get_event_loop()
+            download_result = await loop.run_in_executor(
+                None, lambda: self.downloader.download(job.video_url)
+            )
             if not download_result['success']:
                 raise Exception(f"Download failed: {download_result.get('error')}")
 
@@ -588,14 +591,17 @@ class AutomationEngine:
             self.db.update_job(job)
 
             output_filename = f"processed_{Path(job.local_video_path).stem}.mp4"
-            processed_path = self.processor.process_video(
-                video_path=job.local_video_path,
-                output_filename=output_filename,
-                reframe=self.config['reframe_to_vertical'],
-                background_type='blur',
-                apply_mirror=self.config['apply_mirror'],
-                apply_speed=self.config['apply_speed'],
-                speed_factor=1.02
+            processed_path = await loop.run_in_executor(
+                None,
+                lambda: self.processor.process_video(
+                    video_path=job.local_video_path,
+                    output_filename=output_filename,
+                    reframe=self.config['reframe_to_vertical'],
+                    background_type='blur',
+                    apply_mirror=self.config['apply_mirror'],
+                    apply_speed=self.config['apply_speed'],
+                    speed_factor=1.02
+                )
             )
             job.processed_video_path = processed_path
 
@@ -611,12 +617,15 @@ class AutomationEngine:
                 video_with_subs = str(Path("processed") / f"{base_name}_subs.mp4")
                 srt_path = str(Path("processed") / f"{base_name}.srt")
 
-                sub_result = self.subtitle_gen.process_video_with_subtitles(
-                    video_path=processed_path,
-                    output_video_path=video_with_subs,
-                    output_srt_path=srt_path,
-                    language=self.config['subtitle_language'],
-                    burn_subs=True
+                sub_result = await loop.run_in_executor(
+                    None,
+                    lambda: self.subtitle_gen.process_video_with_subtitles(
+                        video_path=processed_path,
+                        output_video_path=video_with_subs,
+                        output_srt_path=srt_path,
+                        language=self.config['subtitle_language'],
+                        burn_subs=True
+                    )
                 )
 
                 job.processed_video_path = sub_result['video_path']

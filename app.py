@@ -211,7 +211,10 @@ async def download_video_endpoint(request: VideoDownloadRequest):
     async with _download_semaphore:
         try:
             logger.info(f"Downloading video from: {request.url}")
-            result = downloader.download(request.url, request.custom_filename)
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                None, lambda: downloader.download(request.url, request.custom_filename)
+            )
 
             if result['success']:
                 return JSONResponse({
@@ -250,16 +253,20 @@ async def process_video_endpoint(request: VideoProcessRequest):
         bg_color = hex_to_rgb(request.background_color)
 
         # Procesar video (sin subtítulos primero)
-        processed_video = processor.process_video(
-            video_path=request.video_path,
-            output_filename=request.output_filename,
-            reframe=request.reframe,
-            background_type=request.background_type,
-            background_color=bg_color,
-            apply_mirror=request.apply_mirror,
-            apply_speed=request.apply_speed,
-            speed_factor=request.speed_factor,
-            apply_color_adjust=request.apply_color_adjust
+        loop = asyncio.get_event_loop()
+        processed_video = await loop.run_in_executor(
+            None,
+            lambda: processor.process_video(
+                video_path=request.video_path,
+                output_filename=request.output_filename,
+                reframe=request.reframe,
+                background_type=request.background_type,
+                background_color=bg_color,
+                apply_mirror=request.apply_mirror,
+                apply_speed=request.apply_speed,
+                speed_factor=request.speed_factor,
+                apply_color_adjust=request.apply_color_adjust
+            )
         )
 
         result = {
@@ -282,16 +289,19 @@ async def process_video_endpoint(request: VideoProcessRequest):
             srt_file = str(processor.output_path / f"{base_name}.srt")
 
             # Procesar con subtítulos
-            sub_result = subtitle_gen.process_video_with_subtitles(
-                video_path=processed_video,
-                output_video_path=video_with_subs,
-                output_srt_path=srt_file,
-                language=request.subtitle_language,
-                burn_subs=request.burn_subtitles,
-                font_size=70,
-                font_color='yellow',
-                stroke_color='black',
-                stroke_width=4
+            sub_result = await loop.run_in_executor(
+                None,
+                lambda: subtitle_gen.process_video_with_subtitles(
+                    video_path=processed_video,
+                    output_video_path=video_with_subs,
+                    output_srt_path=srt_file,
+                    language=request.subtitle_language,
+                    burn_subs=request.burn_subtitles,
+                    font_size=70,
+                    font_color='yellow',
+                    stroke_color='black',
+                    stroke_width=4
+                )
             )
 
             result.update({
@@ -391,7 +401,10 @@ async def complete_flow_endpoint(request: CompleteFlowRequest, background_tasks:
                 spd = info.get("speed_mb", 0)
                 tasks_status[task_id]["progress"] = f"Downloading... {pct}% ({spd} MB/s)"
 
-            download_result = downloader.download(request.url, progress_callback=_on_download_progress)
+            loop = asyncio.get_event_loop()
+            download_result = await loop.run_in_executor(
+                None, lambda: downloader.download(request.url, progress_callback=_on_download_progress)
+            )
         finally:
             _download_semaphore.release()
 
@@ -412,16 +425,19 @@ async def complete_flow_endpoint(request: CompleteFlowRequest, background_tasks:
             bg_color = hex_to_rgb(request.background_color)
             output_filename = f"processed_{Path(video_path).name}"
 
-            processed_video = processor.process_video(
-                video_path=video_path,
-                output_filename=output_filename,
-                reframe=request.reframe,
-                background_type=request.background_type,
-                background_color=bg_color,
-                apply_mirror=request.apply_mirror,
-                apply_speed=request.apply_speed,
-                speed_factor=request.speed_factor,
-                apply_color_adjust=True
+            processed_video = await loop.run_in_executor(
+                None,
+                lambda: processor.process_video(
+                    video_path=video_path,
+                    output_filename=output_filename,
+                    reframe=request.reframe,
+                    background_type=request.background_type,
+                    background_color=bg_color,
+                    apply_mirror=request.apply_mirror,
+                    apply_speed=request.apply_speed,
+                    speed_factor=request.speed_factor,
+                    apply_color_adjust=True
+                )
             )
 
             tasks_status[task_id]['data']['processed_video'] = processed_video
@@ -439,16 +455,19 @@ async def complete_flow_endpoint(request: CompleteFlowRequest, background_tasks:
                 video_with_subs = str(processor.output_path / f"{base_name}_with_subs.mp4")
                 srt_file = str(processor.output_path / f"{base_name}.srt")
 
-                sub_result = subtitle_gen.process_video_with_subtitles(
-                    video_path=processed_video,
-                    output_video_path=video_with_subs,
-                    output_srt_path=srt_file,
-                    language=request.subtitle_language,
-                    burn_subs=request.burn_subtitles,
-                    font_size=70,
-                    font_color='yellow',
-                    stroke_color='black',
-                    stroke_width=4
+                sub_result = await loop.run_in_executor(
+                    None,
+                    lambda: subtitle_gen.process_video_with_subtitles(
+                        video_path=processed_video,
+                        output_video_path=video_with_subs,
+                        output_srt_path=srt_file,
+                        language=request.subtitle_language,
+                        burn_subs=request.burn_subtitles,
+                        font_size=70,
+                        font_color='yellow',
+                        stroke_color='black',
+                        stroke_width=4
+                    )
                 )
 
                 final_video = sub_result['video_path'] if request.burn_subtitles else processed_video
@@ -1003,8 +1022,12 @@ async def auto_flow_endpoint(request: AutoFlowRequest, background_tasks: Backgro
             tasks_status[task_id]["progress"] = f"Descargando video viral... {pct}% ({spd} MB/s)"
 
         logger.info(f"[AutoFlow {task_id}] Step 2: Downloading video...")
-        download_result = downloader.download(selected_video.url,
-                                              progress_callback=_on_viral_download_progress)
+        loop = asyncio.get_event_loop()
+        download_result = await loop.run_in_executor(
+            None,
+            lambda: downloader.download(selected_video.url,
+                                        progress_callback=_on_viral_download_progress)
+        )
 
         if not download_result.get('success'):
             tasks_status[task_id] = {

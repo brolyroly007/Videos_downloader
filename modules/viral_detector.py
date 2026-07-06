@@ -378,7 +378,10 @@ class ViralDetector:
                 url
             ]
 
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                None, lambda: subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            )
 
             if result.returncode == 0:
                 data = json.loads(result.stdout)
