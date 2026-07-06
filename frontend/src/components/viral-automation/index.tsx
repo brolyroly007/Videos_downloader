@@ -132,9 +132,9 @@ export function ViralAutomation() {
       if (info.success) {
         showToast("Video info loaded", "success")
       }
-    } catch (error: any) {
-      if (error?.name === "AbortError") return // cancelada por una preview más nueva
-      showToast(error.message || "Failed to get video info", "error")
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return // cancelada por una preview más nueva
+      showToast(error instanceof Error ? error.message : "Failed to get video info", "error")
     } finally {
       if (previewAbortRef.current === controller) {
         setPreviewLoading(false)
@@ -276,7 +276,8 @@ export function ViralAutomation() {
             )
           )
         }
-      } catch (error: any) {
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : "Processing failed"
         setJobs((prev) =>
           prev.map((j) =>
             j.id === jobId
@@ -285,12 +286,12 @@ export function ViralAutomation() {
                   status: "error",
                   progress: 0,
                   message: "Failed",
-                  error: error.message,
+                  error: msg,
                 }
               : j
           )
         )
-        showToast(error.message || "Processing failed", "error")
+        showToast(msg, "error")
       }
     }
 

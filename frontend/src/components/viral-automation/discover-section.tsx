@@ -69,6 +69,23 @@ interface DiscoveredVideo {
   upload_date?: string
 }
 
+// Forma cruda (opcional) del video que devuelve la API de discover.
+interface RawDiscoverVideo {
+  id: string
+  url: string
+  title?: string
+  author?: string
+  author_url?: string
+  thumbnail?: string
+  views?: number
+  likes?: number
+  comments?: number
+  shares?: number
+  duration?: number
+  viral_score?: number
+  category?: string
+}
+
 interface DiscoverSectionProps {
   onAddToQueue: (url: string) => void
 }
@@ -113,7 +130,7 @@ export function DiscoverSection({ onAddToQueue }: DiscoverSectionProps) {
       const data = await response.json()
 
       if (data.success && Array.isArray(data.videos) && data.videos.length > 0) {
-        const mappedVideos: DiscoveredVideo[] = data.videos.map((v: any) => ({
+        const mappedVideos: DiscoveredVideo[] = (data.videos as RawDiscoverVideo[]).map((v) => ({
           id: v.id,
           url: v.url,
           title: v.title || 'Sin título',
