@@ -116,8 +116,32 @@ export function ViralAutomation() {
   // Preview video. Se cancela la request anterior para que una respuesta lenta
   // de una URL previa no sobrescriba el videoInfo de la URL actual (race).
   const previewAbortRef = useRef<AbortController | null>(null)
+  // Valida que sea una URL http(s) de una plataforma soportada.
+  const isSupportedUrl = useCallback((value: string): boolean => {
+    let parsed: URL
+    try {
+      parsed = new URL(value.trim())
+    } catch {
+      return false
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false
+    const host = parsed.hostname.toLowerCase()
+    return [
+      "tiktok.com",
+      "instagram.com",
+      "youtube.com",
+      "youtu.be",
+      "facebook.com",
+      "fb.watch",
+    ].some((d) => host === d || host.endsWith("." + d))
+  }, [])
+
   const handlePreview = useCallback(async () => {
     if (!url.trim()) return
+    if (!isSupportedUrl(url)) {
+      showToast("URL no válida. Usa TikTok, Instagram, YouTube o Facebook.", "error")
+      return
+    }
 
     previewAbortRef.current?.abort()
     const controller = new AbortController()
@@ -141,12 +165,17 @@ export function ViralAutomation() {
         previewAbortRef.current = null
       }
     }
-  }, [url, showToast])
+  }, [url, showToast, isSupportedUrl])
 
   // Process video - supports adding multiple videos to queue
   const handleProcess = useCallback(async (autoUpload: boolean = false) => {
     if (!url.trim()) {
       showToast("Please enter a video URL", "error")
+      return
+    }
+
+    if (!isSupportedUrl(url)) {
+      showToast("URL no válida. Usa TikTok, Instagram, YouTube o Facebook.", "error")
       return
     }
 
@@ -298,7 +327,7 @@ export function ViralAutomation() {
     // Start processing without blocking
     processAsync()
 
-  }, [url, description, videoInfo, reframe, backgroundType, backgroundColor, applyMirror, applySpeed, generateSubtitles, subtitleLanguage, burnSubtitles, showToast, fetchFiles, canAddMore])
+  }, [url, description, videoInfo, reframe, backgroundType, backgroundColor, applyMirror, applySpeed, generateSubtitles, subtitleLanguage, burnSubtitles, showToast, fetchFiles, canAddMore, isSupportedUrl])
 
   // Clear all
   const handleClearAll = useCallback(() => {

@@ -88,7 +88,7 @@
 
 - [x] F11. `index.tsx` monolítico (487 líneas, ~20 useState, 25 props a InputSection). Agrupar opciones en `useReducer`/context; memoizar. → InputSection/OutputSection/ProcessingHistory envueltos en `React.memo` (con handlers ya `useCallback`): un tecleo en la URL ya no re-renderiza OutputSection ni ProcessingHistory (sus props son estables). Resuelto el problema de rendimiento. El agrupamiento de opciones en `useReducer` queda como refactor de organización opcional (mayor y sin valor de runtime adicional). `tsc` pasa.
 - [x] F12. Tipado `any` (index.tsx:116,218; video-processor.tsx:123; discover-section.tsx:111). Tipar y usar `error instanceof Error`. → Los `catch (error: any)` de index.tsx usan `error instanceof Error`/`DOMException`; el `map((v: any))` de discover usa un tipo `RawDiscoverVideo`. (video-processor.tsx era código muerto borrado en F8.) `tsc` pasa.
-- [ ] F13. Sin validación real de URL (index.tsx:107,125). Validar formato/plataforma.
+- [x] F13. Sin validación real de URL (index.tsx:107,125). Validar formato/plataforma. → Helper `isSupportedUrl` (parsea con `new URL`, exige http(s) y host de TikTok/Instagram/YouTube/Facebook); usado en `handlePreview` y `handleProcess` con toast de error antes de llamar al backend. `tsc` pasa.
 - [ ] F14. Límite mágico `5` duplicado (index.tsx:78, input-section.tsx:73). Extraer constante compartida.
 - [ ] F15. `selectedJob` inconsistente tras borrar (index.tsx:75 vs processing-history.tsx:69).
 - [ ] F16. IDs de job con `Date.now()` (index.tsx:140). Usar `crypto.randomUUID()`.
