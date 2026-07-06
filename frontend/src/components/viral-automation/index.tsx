@@ -5,7 +5,7 @@ import { Dithering } from "@paper-design/shaders-react"
 import { InputSection } from "./input-section"
 import { OutputSection } from "./output-section"
 import { ProcessingHistory } from "./processing-history"
-import { ToastNotification } from "./toast-notification"
+import { toast as sonnerToast } from "sonner"
 import { DiscoverSection } from "./discover-section"
 import { api, ProcessingOptions, VideoInfo, FileInfo } from "@/lib/api"
 import { Zap, Compass, Video } from "lucide-react"
@@ -54,7 +54,6 @@ export function ViralAutomation() {
   const [processedFiles, setProcessedFiles] = useState<FileInfo[]>([])
 
   // UI state
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null)
   const [leftWidth, setLeftWidth] = useState(50)
   const [isResizing, setIsResizing] = useState(false)
   const [isLargeScreen, setIsLargeScreen] = useState(false)
@@ -76,9 +75,11 @@ export function ViralAutomation() {
   const isProcessing = processingCount > 0
   const canAddMore = processingCount < 5 // Allow up to 5 concurrent jobs
 
+  // Usa sonner (montado en layout) en vez de un toast casero con setTimeout:
+  // maneja el apilado, el cierre y la accesibilidad sin sobrescribirse.
   const showToast = useCallback((message: string, type: "success" | "error" = "success") => {
-    setToast({ message, type })
-    setTimeout(() => setToast(null), 3000)
+    if (type === "error") sonnerToast.error(message)
+    else sonnerToast.success(message)
   }, [])
 
   // Fetch files
@@ -349,7 +350,6 @@ export function ViralAutomation() {
 
   return (
     <div className="bg-background min-h-screen flex items-center justify-center select-none">
-      {toast && <ToastNotification message={toast.message} type={toast.type} />}
 
       {/* Shader Background */}
       <div className="fixed inset-0 z-0 select-none shader-background bg-black">
