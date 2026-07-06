@@ -157,7 +157,7 @@ Para exportar cookies manualmente:
    https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc
 4. Haz clic en el ícono de la extensión
 5. Exporta las cookies y guárdalas como:
-   D:\\proyectojudietha\\cookies\\tiktok_cookies.txt
+   <raiz-del-proyecto>/cookies/tiktok_cookies.txt
 """)
 
     print("\n¿Necesitas más ayuda? Lee: SOLUCION_TIKTOK.md")

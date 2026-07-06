@@ -15,16 +15,19 @@ if %errorlevel% neq 0 (
 )
 echo FFmpeg OK!
 
+REM Raiz del proyecto = carpeta padre de este script
+set "PROJECT_ROOT=%~dp0.."
+
 REM Iniciar Backend FastAPI
 echo.
 echo [2/4] Starting FastAPI Backend on port 8000...
-start "FastAPI Backend" cmd /c "cd /d D:\proyectojudietha && python app.py"
+start "FastAPI Backend" cmd /c "cd /d "%PROJECT_ROOT%" && python app.py"
 timeout /t 3 /nobreak >nul
 
 REM Iniciar Frontend Next.js
 echo.
 echo [3/4] Starting Next.js Frontend on port 3000...
-start "Next.js Frontend" cmd /c "cd /d D:\proyectojudietha\frontend && npm run dev"
+start "Next.js Frontend" cmd /c "cd /d "%PROJECT_ROOT%\frontend" && npm run dev"
 timeout /t 5 /nobreak >nul
 
 echo.

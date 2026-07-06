@@ -3,12 +3,14 @@ Test TikTokDiscovery module directly
 """
 import asyncio
 import sys
+import os
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
-# Import only the specific module, not the whole package
-sys.path.insert(0, r'D:\proyectojudietha')
+# Import only the specific module, not the whole package.
+# La raiz del proyecto es la carpeta padre de este script (portable).
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Direct import to avoid moviepy issues
 import subprocess

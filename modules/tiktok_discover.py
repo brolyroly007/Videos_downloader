@@ -24,12 +24,13 @@ import math
 
 # Find yt-dlp executable
 def find_ytdlp():
-    """Find yt-dlp executable path"""
-    # Try common locations
+    """
+    Localiza el ejecutable de yt-dlp de forma portable.
+    Prioridad: variable de entorno YTDLP_PATH -> yt-dlp en PATH -> nombre plano.
+    """
     paths_to_try = [
+        os.getenv('YTDLP_PATH'),
         shutil.which('yt-dlp'),
-        r'C:\Users\MSI\AppData\Local\Programs\Python\Python313\Scripts\yt-dlp.exe',
-        r'D:\proyectojudietha\.venv\Scripts\yt-dlp.exe',
     ]
     for path in paths_to_try:
         if path and os.path.exists(path):
