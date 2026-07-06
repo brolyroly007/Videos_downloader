@@ -6,6 +6,7 @@ Maneja el procesamiento de videos: re-enmarcado, efectos anti-copyright, mirrori
 import os
 import subprocess
 import json
+import uuid
 import cv2
 import numpy as np
 # MoviePy 2.x API
@@ -212,7 +213,7 @@ class VideoProcessor:
                 output_path,
                 codec='libx264',
                 audio_codec='aac',
-                temp_audiofile=str(self.temp_path / 'temp-audio.m4a'),
+                temp_audiofile=str(self.temp_path / f'temp-audio-{uuid.uuid4().hex}.m4a'),
                 remove_temp=True,
                 fps=clip.fps
             )
@@ -258,7 +259,7 @@ class VideoProcessor:
                 output_path,
                 codec='libx264',
                 audio_codec='aac',
-                temp_audiofile=str(self.temp_path / 'temp-audio.m4a'),
+                temp_audiofile=str(self.temp_path / f'temp-audio-{uuid.uuid4().hex}.m4a'),
                 remove_temp=True,
                 fps=clip.fps
             )
@@ -285,7 +286,7 @@ class VideoProcessor:
                 output_path,
                 codec='libx264',
                 audio_codec='aac',
-                temp_audiofile=str(self.temp_path / 'temp-audio.m4a'),
+                temp_audiofile=str(self.temp_path / f'temp-audio-{uuid.uuid4().hex}.m4a'),
                 remove_temp=True,
                 fps=clip.fps
             )
@@ -312,7 +313,7 @@ class VideoProcessor:
                 output_path,
                 codec='libx264',
                 audio_codec='aac',
-                temp_audiofile=str(self.temp_path / 'temp-audio.m4a'),
+                temp_audiofile=str(self.temp_path / f'temp-audio-{uuid.uuid4().hex}.m4a'),
                 remove_temp=True,
                 fps=clip.fps
             )
@@ -346,7 +347,7 @@ class VideoProcessor:
                 output_path,
                 codec='libx264',
                 audio_codec='aac',
-                temp_audiofile=str(self.temp_path / 'temp-audio.m4a'),
+                temp_audiofile=str(self.temp_path / f'temp-audio-{uuid.uuid4().hex}.m4a'),
                 remove_temp=True,
                 fps=clip.fps
             )

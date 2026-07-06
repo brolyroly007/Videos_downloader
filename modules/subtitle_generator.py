@@ -5,6 +5,7 @@ Puede "quemar" los subtítulos en el video con estilo personalizado
 """
 
 import os
+import uuid
 from pathlib import Path
 from typing import Optional, Dict, List, Tuple
 import logging
@@ -75,7 +76,7 @@ class SubtitleGenerator:
         """Extrae el audio del video a un archivo WAV temporal"""
         try:
             logger.info("Extracting audio from video...")
-            audio_path = str(self.temp_path / "temp_audio.wav")
+            audio_path = str(self.temp_path / f"temp_audio_{uuid.uuid4().hex}.wav")
 
             clip = VideoFileClip(video_path)
             clip.audio.write_audiofile(audio_path, codec='pcm_s16le', logger=None)
@@ -240,7 +241,7 @@ class SubtitleGenerator:
                 output_path,
                 codec='libx264',
                 audio_codec='aac',
-                temp_audiofile=str(self.temp_path / 'temp-audio-subs.m4a'),
+                temp_audiofile=str(self.temp_path / f'temp-audio-subs-{uuid.uuid4().hex}.m4a'),
                 remove_temp=True,
                 fps=video.fps
             )

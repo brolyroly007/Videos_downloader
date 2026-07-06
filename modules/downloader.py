@@ -327,8 +327,11 @@ class VideoDownloader:
 
             # Verificar que el archivo existe
             if not os.path.exists(downloaded_filename):
-                # Buscar el archivo más reciente en downloads
-                downloaded_filename = self._find_latest_download()
+                # Buscar por el nombre base esperado (no "el más reciente",
+                # que bajo concurrencia devolvería otro video)
+                downloaded_filename = self._find_latest_download(
+                    stem=Path(downloaded_filename).stem
+                )
 
             video_info = {
                 'success': True,
@@ -370,8 +373,8 @@ class VideoDownloader:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=DOWNLOAD_TIMEOUT)
 
             if result.returncode == 0:
-                # Buscar el archivo descargado
-                downloaded_file = self._find_latest_download()
+                # Buscar el archivo descargado por su id (evita colisiones)
+                downloaded_file = self._find_latest_download(stem=video_id)
 
                 if downloaded_file:
                     logger.info(f"CLI download successful: {downloaded_file}")
@@ -397,12 +400,27 @@ class VideoDownloader:
 
         return None
 
-    def _find_latest_download(self) -> Optional[str]:
-        """Encuentra el archivo más recientemente descargado"""
+    def _find_latest_download(self, stem: Optional[str] = None) -> Optional[str]:
+        """
+        Encuentra el archivo descargado.
+
+        Si se pasa `stem` (el nombre base esperado, p. ej. el id del video),
+        busca exactamente ese archivo — evita que bajo concurrencia se
+        devuelva el video de otra descarga. Sin `stem`, cae al comportamiento
+        anterior (el más reciente).
+        """
         video_extensions = ['.mp4', '.webm', '.mkv', '.mov', '.avi']
+
+        if stem:
+            for ext in video_extensions:
+                candidate = self.download_path / f"{stem}{ext}"
+                if candidate.is_file():
+                    return str(candidate)
+            # No se halló por nombre exacto; no adivinar con "el más reciente"
+            return None
+
         latest_file = None
         latest_time = 0
-
         for file in self.download_path.iterdir():
             if file.is_file() and file.suffix.lower() in video_extensions:
                 file_time = file.stat().st_mtime
