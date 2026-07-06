@@ -6,6 +6,7 @@ Sistema de autenticación simple para el dashboard
 import os
 import json
 import hashlib
+import hmac
 import secrets
 import logging
 from typing import Optional, Dict, List
@@ -136,8 +137,9 @@ class AuthDatabase:
         try:
             salt, stored_hash = password_hash.split('$')
             hash_obj = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100000)
-            return hash_obj.hex() == stored_hash
-        except:
+            # Comparación en tiempo constante para no filtrar el hash por timing
+            return hmac.compare_digest(hash_obj.hex(), stored_hash)
+        except Exception:
             return False
 
     def get_user_by_username(self, username: str) -> Optional[User]:
@@ -376,12 +378,18 @@ class AuthManager:
 
     def login(self, username: str, password: str, ip_address: str = "", user_agent: str = "") -> Dict:
         """Realiza login y retorna token"""
-        # Verificar intentos fallidos
-        failed_attempts = self.db.get_failed_attempts(username=username, minutes=self.lockout_minutes)
+        # El bloqueo se cuenta por IP cuando está disponible: así un atacante
+        # solo se bloquea a sí mismo y no puede dejar fuera a la cuenta ajena
+        # (p. ej. admin) fallando logins a propósito. Sin IP, cae a username.
+        if ip_address:
+            failed_attempts = self.db.get_failed_attempts(ip_address=ip_address, minutes=self.lockout_minutes)
+        else:
+            failed_attempts = self.db.get_failed_attempts(username=username, minutes=self.lockout_minutes)
+
         if failed_attempts >= self.max_login_attempts:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=f"Cuenta bloqueada temporalmente. Intenta en {self.lockout_minutes} minutos."
+                detail=f"Demasiados intentos fallidos. Intenta en {self.lockout_minutes} minutos."
             )
 
         # Autenticar
@@ -391,6 +399,13 @@ class AuthManager:
             self.db.log_login_attempt(username, ip_address, True)
             session = self.db.create_session(user.id, ip_address, user_agent)
 
+            # Aprovechar el login para purgar sesiones expiradas (evita que
+            # la tabla de sesiones crezca sin límite).
+            try:
+                self.db.cleanup_expired_sessions()
+            except Exception:
+                pass
+
             return {
                 "success": True,
                 "token": session.token,
@@ -399,7 +414,7 @@ class AuthManager:
             }
         else:
             self.db.log_login_attempt(username, ip_address, False)
-            remaining = self.max_login_attempts - failed_attempts - 1
+            remaining = max(0, self.max_login_attempts - failed_attempts - 1)
 
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
