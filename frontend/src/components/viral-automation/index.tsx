@@ -155,11 +155,11 @@ export function ViralAutomation() {
       if (controller.signal.aborted) return
       setVideoInfo(info)
       if (info.success) {
-        showToast("Video info loaded", "success")
+        showToast("Información del video cargada", "success")
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return // cancelada por una preview más nueva
-      showToast(error instanceof Error ? error.message : "Failed to get video info", "error")
+      showToast(error instanceof Error ? error.message : "No se pudo obtener la información del video", "error")
     } finally {
       if (previewAbortRef.current === controller) {
         setPreviewLoading(false)
@@ -171,7 +171,7 @@ export function ViralAutomation() {
   // Process video - supports adding multiple videos to queue
   const handleProcess = useCallback(async (autoUpload: boolean = false) => {
     if (!url.trim()) {
-      showToast("Please enter a video URL", "error")
+      showToast("Ingresa una URL de video", "error")
       return
     }
 
@@ -181,7 +181,7 @@ export function ViralAutomation() {
     }
 
     if (autoUpload && !description.trim()) {
-      showToast("Please add a description for TikTok", "error")
+      showToast("Agrega una descripción para TikTok", "error")
       return
     }
 
@@ -200,9 +200,9 @@ export function ViralAutomation() {
       status: "processing",
       url: currentUrl,
       platform: currentVideoInfo?.platform || "unknown",
-      title: currentVideoInfo?.title || "Processing...",
+      title: currentVideoInfo?.title || "Procesando...",
       progress: 0,
-      message: "Starting...",
+      message: "Iniciando...",
       createdAt: new Date(),
     }
 
@@ -307,7 +307,7 @@ export function ViralAutomation() {
           )
         }
       } catch (error) {
-        const msg = error instanceof Error ? error.message : "Processing failed"
+        const msg = error instanceof Error ? error.message : "Falló el procesamiento"
         setJobs((prev) =>
           prev.map((j) =>
             j.id === jobId
@@ -448,7 +448,7 @@ export function ViralAutomation() {
                 </div>
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                   <span className="hidden md:inline">
-                    {downloadedFiles.length} downloaded • {processedFiles.length} processed
+                    {downloadedFiles.length} descargados • {processedFiles.length} procesados
                   </span>
                 </div>
               </div>

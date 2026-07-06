@@ -25,9 +25,9 @@ function ProcessingHistoryBase({
       <div className="bg-black/30 border border-gray-700 p-4">
         <div className="flex items-center gap-2 mb-2">
           <Clock className="size-4 text-gray-500" />
-          <span className="text-sm font-medium text-gray-400">Recent Jobs</span>
+          <span className="text-sm font-medium text-gray-400">Trabajos recientes</span>
         </div>
-        <p className="text-xs text-gray-500 italic">No processing history yet</p>
+        <p className="text-xs text-gray-500 italic">Aún no hay historial de procesamiento</p>
       </div>
     )
   }
@@ -54,9 +54,9 @@ function ProcessingHistoryBase({
       <div className="flex items-center justify-between p-3 border-b border-gray-700">
         <div className="flex items-center gap-2">
           <Clock className="size-4 text-gray-500" />
-          <span className="text-sm font-medium text-gray-400">Recent Jobs</span>
+          <span className="text-sm font-medium text-gray-400">Trabajos recientes</span>
         </div>
-        <span className="text-xs text-gray-600">{jobs.length} items</span>
+        <span className="text-xs text-gray-600">{jobs.length} elementos</span>
       </div>
       <ScrollArea className="max-h-[200px] xl:max-h-[180px]">
         <div className="p-2 space-y-1">

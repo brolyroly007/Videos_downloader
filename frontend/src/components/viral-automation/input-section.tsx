@@ -79,7 +79,7 @@ function InputSectionBase({
         {/* URL Input */}
         <div className="space-y-2">
           <div className="flex items-center justify-between mb-2 select-none">
-            <label htmlFor="video-url" className="text-sm md:text-base font-medium text-gray-300">Video URL</label>
+            <label htmlFor="video-url" className="text-sm md:text-base font-medium text-gray-300">URL del video</label>
             <Button
               onClick={onClearAll}
               disabled={!hasContent}
@@ -89,7 +89,7 @@ function InputSectionBase({
               className="h-7 md:h-8 px-2 md:px-3 text-xs bg-transparent border border-gray-600 text-white hover:bg-gray-700 disabled:opacity-50"
             >
               <Trash2 className="size-3 md:size-4 md:mr-1" />
-              <span className="hidden md:inline">Clear</span>
+              <span className="hidden md:inline">Limpiar</span>
             </Button>
           </div>
           <div className="flex gap-2">
@@ -98,7 +98,7 @@ function InputSectionBase({
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://tiktok.com/... or instagram.com/reels/..."
+              placeholder="https://tiktok.com/... o instagram.com/reels/..."
               className="flex-1 p-2 md:p-3 bg-black/50 border border-gray-600 text-white text-sm focus:outline-none focus:border-white transition-colors"
             />
             <Button
@@ -138,7 +138,7 @@ function InputSectionBase({
                 </p>
                 {videoInfo.view_count && (
                   <p className="text-xs text-purple-400 mt-1">
-                    {videoInfo.view_count.toLocaleString()} views
+                    {videoInfo.view_count.toLocaleString()} visitas
                   </p>
                 )}
               </div>
@@ -149,26 +149,26 @@ function InputSectionBase({
         {/* Description for TikTok */}
         <div className="space-y-2">
           <label htmlFor="tiktok-description" className="text-sm md:text-base font-medium text-gray-300 select-none">
-            TikTok Description
+            Descripción de TikTok
           </label>
           <textarea
             id="tiktok-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Add hashtags and description for TikTok upload..."
+            placeholder="Agrega hashtags y descripción para subir a TikTok..."
             className="w-full min-h-[60px] md:min-h-[80px] p-2 md:p-3 bg-black/50 border border-gray-600 text-white text-sm resize-none focus:outline-none focus:border-white transition-colors"
           />
         </div>
 
         {/* Processing Options */}
         <div className="space-y-3 pt-2 border-t border-white/10">
-          <h3 className="text-sm font-medium text-gray-300 select-none">Processing Options</h3>
+          <h3 className="text-sm font-medium text-gray-300 select-none">Opciones de procesamiento</h3>
 
           {/* Reframe to 9:16 */}
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
-              <span className="text-sm text-white">Reframe to 9:16</span>
-              <span className="text-xs text-gray-500">Convert to vertical format</span>
+              <span className="text-sm text-white">Reencuadrar a 9:16</span>
+              <span className="text-xs text-gray-500">Convertir a formato vertical</span>
             </div>
             <Switch checked={reframe} onCheckedChange={setReframe} />
           </div>
@@ -176,15 +176,15 @@ function InputSectionBase({
           {/* Background Type */}
           {reframe && (
             <div className="flex items-center justify-between pl-4 border-l-2 border-purple-500/30">
-              <span className="text-sm text-gray-300">Background</span>
+              <span className="text-sm text-gray-300">Fondo</span>
               <div className="flex items-center gap-2">
                 <Select value={backgroundType} onValueChange={(v) => setBackgroundType(v as "blur" | "solid")}>
                   <SelectTrigger className="w-24 h-8 bg-black/50 border-gray-600 text-white text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-black border-gray-600">
-                    <SelectItem value="blur" className="text-white text-xs">Blur</SelectItem>
-                    <SelectItem value="solid" className="text-white text-xs">Solid</SelectItem>
+                    <SelectItem value="blur" className="text-white text-xs">Desenfoque</SelectItem>
+                    <SelectItem value="solid" className="text-white text-xs">Sólido</SelectItem>
                   </SelectContent>
                 </Select>
                 {backgroundType === "solid" && (
@@ -202,8 +202,8 @@ function InputSectionBase({
           {/* Mirror Effect */}
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
-              <span className="text-sm text-white">Mirror Effect</span>
-              <span className="text-xs text-gray-500">Horizontal flip</span>
+              <span className="text-sm text-white">Efecto espejo</span>
+              <span className="text-xs text-gray-500">Volteo horizontal</span>
             </div>
             <Switch checked={applyMirror} onCheckedChange={setApplyMirror} />
           </div>
@@ -211,7 +211,7 @@ function InputSectionBase({
           {/* Speed Adjustment */}
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
-              <span className="text-sm text-white">Speed Boost</span>
+              <span className="text-sm text-white">Cambio de velocidad</span>
               <span className="text-xs text-gray-500">1.02x faster</span>
             </div>
             <Switch checked={applySpeed} onCheckedChange={setApplySpeed} />
@@ -220,8 +220,8 @@ function InputSectionBase({
           {/* Subtitles */}
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
-              <span className="text-sm text-white">Generate Subtitles</span>
-              <span className="text-xs text-gray-500">Whisper AI transcription</span>
+              <span className="text-sm text-white">Generar subtítulos</span>
+              <span className="text-xs text-gray-500">Transcripción con Whisper AI</span>
             </div>
             <Switch checked={generateSubtitles} onCheckedChange={setGenerateSubtitles} />
           </div>
@@ -229,21 +229,21 @@ function InputSectionBase({
           {generateSubtitles && (
             <>
               <div className="flex items-center justify-between pl-4 border-l-2 border-purple-500/30">
-                <span className="text-sm text-gray-300">Language</span>
+                <span className="text-sm text-gray-300">Idioma</span>
                 <Select value={subtitleLanguage} onValueChange={setSubtitleLanguage}>
                   <SelectTrigger className="w-28 h-8 bg-black/50 border-gray-600 text-white text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-black border-gray-600">
-                    <SelectItem value="es" className="text-white text-xs">Spanish</SelectItem>
-                    <SelectItem value="en" className="text-white text-xs">English</SelectItem>
-                    <SelectItem value="pt" className="text-white text-xs">Portuguese</SelectItem>
-                    <SelectItem value="auto" className="text-white text-xs">Auto Detect</SelectItem>
+                    <SelectItem value="es" className="text-white text-xs">Español</SelectItem>
+                    <SelectItem value="en" className="text-white text-xs">Inglés</SelectItem>
+                    <SelectItem value="pt" className="text-white text-xs">Portugués</SelectItem>
+                    <SelectItem value="auto" className="text-white text-xs">Detección automática</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex items-center justify-between pl-4 border-l-2 border-purple-500/30">
-                <span className="text-sm text-gray-300">Burn into video</span>
+                <span className="text-sm text-gray-300">Incrustar en el video</span>
                 <Switch checked={burnSubtitles} onCheckedChange={setBurnSubtitles} />
               </div>
             </>
@@ -262,7 +262,7 @@ function InputSectionBase({
               <span className={cn(
                 canAddMore ? "text-green-500" : "text-yellow-500"
               )}>
-                {canAddMore ? `Add up to ${MAX_CONCURRENT_JOBS - processingCount} more` : "Queue full"}
+                {canAddMore ? `Agrega hasta ${MAX_CONCURRENT_JOBS - processingCount} más` : "Cola llena"}
               </span>
             </div>
           )}
@@ -279,7 +279,7 @@ function InputSectionBase({
             ) : (
               <>
                 <Play className="size-4" />
-                {processingCount > 0 ? "Add to Queue" : "Process Video"}
+                {processingCount > 0 ? "Agregar a la cola" : "Procesar video"}
               </>
             )}
           </Button>

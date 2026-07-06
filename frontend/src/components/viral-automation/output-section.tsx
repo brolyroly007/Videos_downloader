@@ -64,21 +64,21 @@ function OutputSectionBase({
             className="text-xs md:text-sm data-[state=active]:bg-white data-[state=active]:text-black"
           >
             <Video className="size-3 md:size-4 mr-1 md:mr-2" />
-            Preview
+            Vista previa
           </TabsTrigger>
           <TabsTrigger
             value="transcription"
             className="text-xs md:text-sm data-[state=active]:bg-white data-[state=active]:text-black"
           >
             <FileText className="size-3 md:size-4 mr-1 md:mr-2" />
-            Transcript
+            Transcripción
           </TabsTrigger>
           <TabsTrigger
             value="files"
             className="text-xs md:text-sm data-[state=active]:bg-white data-[state=active]:text-black"
           >
             <FolderOpen className="size-3 md:size-4 mr-1 md:mr-2" />
-            Files
+            Archivos
           </TabsTrigger>
         </TabsList>
 
@@ -147,7 +147,7 @@ function OutputSectionBase({
                         }}
                       >
                         <Download className="size-4 mr-2" />
-                        Download
+                        Descargar
                       </Button>
                     </div>
                   ) : selectedJob.status === "error" ? (
@@ -158,7 +158,7 @@ function OutputSectionBase({
                   ) : (
                     <div className="text-center text-gray-500">
                       <Play className="size-12 mx-auto mb-2 opacity-30" />
-                      <p className="text-sm">Waiting to process...</p>
+                      <p className="text-sm">Esperando para procesar...</p>
                     </div>
                   )}
                 </div>
@@ -167,7 +167,7 @@ function OutputSectionBase({
               <div className="flex-1 flex items-center justify-center text-gray-500">
                 <div className="text-center">
                   <Video className="size-16 mx-auto mb-4 opacity-20" />
-                  <p className="text-sm">Enter a video URL to get started</p>
+                  <p className="text-sm">Ingresa una URL de video para empezar</p>
                 </div>
               </div>
             )}
@@ -177,7 +177,7 @@ function OutputSectionBase({
         <TabsContent value="transcription" className="flex-1 mt-0">
           <div className="h-full bg-black/30 border border-gray-700 flex flex-col">
             <div className="flex items-center justify-between p-3 border-b border-gray-700">
-              <span className="text-sm font-medium text-gray-300">Transcription</span>
+              <span className="text-sm font-medium text-gray-300">Transcripción</span>
               <Button
                 variant="ghost"
                 size="sm"
@@ -198,7 +198,7 @@ function OutputSectionBase({
                 <p className="text-sm text-gray-300 whitespace-pre-wrap">{transcription}</p>
               ) : (
                 <p className="text-sm text-gray-500 italic">
-                  Transcription will appear here after processing...
+                  La transcripción aparecerá aquí después de procesar...
                 </p>
               )}
             </ScrollArea>
@@ -241,7 +241,7 @@ function OutputSectionBase({
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-500 italic">No downloaded files</p>
+                  <p className="text-xs text-gray-500 italic">Sin archivos descargados</p>
                 )}
               </div>
 
@@ -278,7 +278,7 @@ function OutputSectionBase({
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-500 italic">No processed files</p>
+                  <p className="text-xs text-gray-500 italic">Sin archivos procesados</p>
                 )}
               </div>
             </ScrollArea>
