@@ -73,7 +73,13 @@ class HashtagDatabase:
         self._populate_initial_data()
 
     def _populate_initial_data(self):
-        """Pobla la base de datos con hashtags conocidos"""
+        """Pobla la base de datos con hashtags conocidos.
+
+        IMPORTANTE: los conteos (views/posts/score) son ESTIMACIONES SEMILLA
+        estáticas y aproximadas, NO datos en tiempo real de TikTok. Sirven como
+        punto de partida para recomendar; no deben presentarse como métricas
+        exactas. Las respuestas de la API lo indican con `data_source`.
+        """
         initial_hashtags = {
             "general": [
                 ("fyp", 500000000000, 100000000, 100),
@@ -444,7 +450,9 @@ class HashtagRecommender:
             "estimated_reach": total_views,
             "competition_level": "high" if total_posts > 50000000 else "medium" if total_posts > 10000000 else "low",
             "avg_trending_score": avg_trending,
-            "recommendation": "good" if avg_trending > 70 else "moderate" if avg_trending > 50 else "weak"
+            "recommendation": "good" if avg_trending > 70 else "moderate" if avg_trending > 50 else "weak",
+            "data_source": "static_seed_estimate",
+            "note": "Las cifras (alcance/competencia) son estimaciones semilla estáticas, no datos en tiempo real de TikTok.",
         }
 
     def suggest_improvements(self, current_hashtags: List[str], category: str) -> Dict:
