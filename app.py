@@ -392,141 +392,140 @@ async def complete_flow_endpoint(request: CompleteFlowRequest, background_tasks:
             "Maximum concurrent processing jobs reached. Try again later.",
             retryable=True,
         )
-    try:
-        task_id = str(uuid.uuid4())
-        _cleanup_old_tasks()
-        tasks_status[task_id] = {
-            "status": "started",
-            "progress": "Downloading video...",
-            "created_at": time.time(),
-            "data": {}
-        }
+    task_id = str(uuid.uuid4())
+    _cleanup_old_tasks()
+    tasks_status[task_id] = {
+        "status": "started",
+        "progress": "En cola...",
+        "created_at": time.time(),
+        "data": {}
+    }
 
-        logger.info(f"Starting complete flow [Task: {task_id}]")
-
-        # 1. Descargar video
-        logger.info("Step 1: Downloading...")
-        await _download_semaphore.acquire()
+    async def _run_complete_flow():
         try:
-            def _on_download_progress(info):
-                tasks_status[task_id]["download_progress"] = info
-                pct = info.get("percent", 0)
-                spd = info.get("speed_mb", 0)
-                tasks_status[task_id]["progress"] = f"Downloading... {pct}% ({spd} MB/s)"
+            logger.info(f"Starting complete flow [Task: {task_id}]")
 
-            loop = asyncio.get_event_loop()
-            download_result = await loop.run_in_executor(
-                None, lambda: downloader.download(request.url, progress_callback=_on_download_progress)
-            )
-        finally:
-            _download_semaphore.release()
+            # 1. Descargar video
+            logger.info("Step 1: Downloading...")
+            await _download_semaphore.acquire()
+            try:
+                def _on_download_progress(info):
+                    tasks_status[task_id]["download_progress"] = info
+                    pct = info.get("percent", 0)
+                    spd = info.get("speed_mb", 0)
+                    tasks_status[task_id]["progress"] = f"Downloading... {pct}% ({spd} MB/s)"
 
-        if not download_result['success']:
-            tasks_status[task_id] = {
-                "status": "failed",
-                "error": download_result.get('error', 'Download failed')
-            }
-            raise HTTPException(status_code=400, detail="Download failed")
-
-        tasks_status[task_id]['progress'] = "Processing video..."
-        video_path = download_result['filename']
-
-        # 2. Procesar video
-        logger.info("Step 2: Processing...")
-        await _process_semaphore.acquire()
-        try:
-            bg_color = hex_to_rgb(request.background_color)
-            output_filename = f"processed_{Path(video_path).name}"
-
-            processed_video = await loop.run_in_executor(
-                None,
-                lambda: processor.process_video(
-                    video_path=video_path,
-                    output_filename=output_filename,
-                    reframe=request.reframe,
-                    background_type=request.background_type,
-                    background_color=bg_color,
-                    apply_mirror=request.apply_mirror,
-                    apply_speed=request.apply_speed,
-                    speed_factor=request.speed_factor,
-                    apply_color_adjust=True
+                loop = asyncio.get_event_loop()
+                download_result = await loop.run_in_executor(
+                    None, lambda: downloader.download(request.url, progress_callback=_on_download_progress)
                 )
-            )
+            finally:
+                _download_semaphore.release()
 
-            tasks_status[task_id]['data']['processed_video'] = processed_video
+            if not download_result['success']:
+                tasks_status[task_id] = {
+                    "status": "failed",
+                    "error": download_result.get('error', 'Download failed')
+                }
+                return
 
-            # 3. Generar subtítulos (si se solicita)
-            if request.generate_subtitles:
-                tasks_status[task_id]['progress'] = "Generating subtitles..."
-                logger.info("Step 3: Generating subtitles...")
+            tasks_status[task_id]['progress'] = "Processing video..."
+            video_path = download_result['filename']
 
-                global subtitle_gen
-                if subtitle_gen is None:
-                    subtitle_gen = SubtitleGenerator(model_size="base")
+            # 2. Procesar video
+            logger.info("Step 2: Processing...")
+            await _process_semaphore.acquire()
+            try:
+                bg_color = hex_to_rgb(request.background_color)
+                output_filename = f"processed_{Path(video_path).name}"
 
-                base_name = Path(output_filename).stem
-                video_with_subs = str(processor.output_path / f"{base_name}_with_subs.mp4")
-                srt_file = str(processor.output_path / f"{base_name}.srt")
-
-                sub_result = await loop.run_in_executor(
+                processed_video = await loop.run_in_executor(
                     None,
-                    lambda: subtitle_gen.process_video_with_subtitles(
-                        video_path=processed_video,
-                        output_video_path=video_with_subs,
-                        output_srt_path=srt_file,
-                        language=request.subtitle_language,
-                        burn_subs=request.burn_subtitles,
-                        font_size=70,
-                        font_color='yellow',
-                        stroke_color='black',
-                        stroke_width=4
+                    lambda: processor.process_video(
+                        video_path=video_path,
+                        output_filename=output_filename,
+                        reframe=request.reframe,
+                        background_type=request.background_type,
+                        background_color=bg_color,
+                        apply_mirror=request.apply_mirror,
+                        apply_speed=request.apply_speed,
+                        speed_factor=request.speed_factor,
+                        apply_color_adjust=True
                     )
                 )
 
-                final_video = sub_result['video_path'] if request.burn_subtitles else processed_video
-                tasks_status[task_id]['data'].update({
-                    'final_video': final_video,
-                    'srt_file': sub_result['srt_path'],
-                    'transcription': sub_result['transcription']
-                })
-            else:
-                final_video = processed_video
-                tasks_status[task_id]['data']['final_video'] = final_video
-        finally:
-            _process_semaphore.release()
+                tasks_status[task_id]['data']['processed_video'] = processed_video
 
-        # 4. Subir a TikTok (si auto_upload está activado)
-        if request.auto_upload:
-            tasks_status[task_id]['progress'] = "Uploading to TikTok..."
-            logger.info("Step 4: Uploading to TikTok...")
+                # 3. Generar subtítulos (si se solicita)
+                if request.generate_subtitles:
+                    tasks_status[task_id]['progress'] = "Generating subtitles..."
+                    logger.info("Step 3: Generating subtitles...")
 
-            upload_result = await uploader.upload_video(
-                video_path=final_video,
-                description=request.description,
-                headless=TIKTOK_HEADLESS
-            )
+                    global subtitle_gen
+                    if subtitle_gen is None:
+                        subtitle_gen = SubtitleGenerator(model_size="base")
 
-            tasks_status[task_id]['data']['upload_result'] = upload_result
+                    base_name = Path(output_filename).stem
+                    video_with_subs = str(processor.output_path / f"{base_name}_with_subs.mp4")
+                    srt_file = str(processor.output_path / f"{base_name}.srt")
 
-        tasks_status[task_id]['status'] = "completed"
-        tasks_status[task_id]['progress'] = "All done!"
+                    sub_result = await loop.run_in_executor(
+                        None,
+                        lambda: subtitle_gen.process_video_with_subtitles(
+                            video_path=processed_video,
+                            output_video_path=video_with_subs,
+                            output_srt_path=srt_file,
+                            language=request.subtitle_language,
+                            burn_subs=request.burn_subtitles,
+                            font_size=70,
+                            font_color='yellow',
+                            stroke_color='black',
+                            stroke_width=4
+                        )
+                    )
 
-        return JSONResponse({
-            "success": True,
-            "task_id": task_id,
-            "message": "Flow completed successfully",
-            "data": tasks_status[task_id]['data']
-        })
+                    final_video = sub_result['video_path'] if request.burn_subtitles else processed_video
+                    tasks_status[task_id]['data'].update({
+                        'final_video': final_video,
+                        'srt_file': sub_result['srt_path'],
+                        'transcription': sub_result['transcription']
+                    })
+                else:
+                    final_video = processed_video
+                    tasks_status[task_id]['data']['final_video'] = final_video
+            finally:
+                _process_semaphore.release()
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error in complete flow: {e}", exc_info=True)
-        tasks_status[task_id] = {
-            "status": "failed",
-            "error": str(e)
-        }
-        return _error_response(500, "PROCESSING_FAILED", f"Complete flow failed: {e}", retryable=True)
+            # 4. Subir a TikTok (si auto_upload está activado)
+            if request.auto_upload:
+                tasks_status[task_id]['progress'] = "Uploading to TikTok..."
+                logger.info("Step 4: Uploading to TikTok...")
+
+                upload_result = await uploader.upload_video(
+                    video_path=final_video,
+                    description=request.description,
+                    headless=TIKTOK_HEADLESS
+                )
+
+                tasks_status[task_id]['data']['upload_result'] = upload_result
+
+            tasks_status[task_id]['status'] = "completed"
+            tasks_status[task_id]['progress'] = "All done!"
+
+        except Exception as e:
+            logger.error(f"Error in complete flow: {e}", exc_info=True)
+            tasks_status[task_id] = {
+                "status": "failed",
+                "error": str(e)
+            }
+
+    background_tasks.add_task(_run_complete_flow)
+    return JSONResponse({
+        "success": True,
+        "task_id": task_id,
+        "status": "started",
+        "message": "Procesando en segundo plano. Consulta /api/task/{task_id} para el estado."
+    })
 
 
 @app.get("/api/task/{task_id}")
@@ -972,235 +971,228 @@ async def auto_flow_endpoint(request: AutoFlowRequest, background_tasks: Backgro
     """
     task_id = str(uuid.uuid4())
 
-    try:
-        _cleanup_old_tasks()
-        tasks_status[task_id] = {
-            "status": "discovering",
-            "progress": "Buscando videos virales...",
-            "step": 1,
-            "total_steps": 6 if request.auto_upload else 4,
-            "created_at": time.time(),
-            "data": {}
-        }
+    _cleanup_old_tasks()
+    tasks_status[task_id] = {
+        "status": "discovering",
+        "progress": "Buscando videos virales...",
+        "step": 1,
+        "total_steps": 6 if request.auto_upload else 4,
+        "created_at": time.time(),
+        "data": {}
+    }
 
-        logger.info(f"[AutoFlow {task_id}] Starting - Category: {request.category}")
 
-        # PASO 1: Descubrir videos virales
-        logger.info(f"[AutoFlow {task_id}] Step 1: Discovering viral videos...")
-        videos = await tiktok_discovery.discover_category(
-            category_id=request.category,
-            limit=10,  # Buscar 10 para elegir el mejor
-            sort_by=request.sort_by
-        )
-
-        if not videos:
-            tasks_status[task_id] = {
-                "status": "error",
-                "error": "No se encontraron videos virales"
-            }
-            return JSONResponse({
-                "success": False,
-                "task_id": task_id,
-                "error": "No viral videos found for this category"
-            })
-
-        # Filtrar por potencial viral mínimo
-        qualified_videos = [
-            v for v in videos
-            if v.predicted_viral_potential >= request.min_viral_potential
-        ]
-
-        if not qualified_videos:
-            qualified_videos = videos[:request.max_videos]  # Tomar los mejores si ninguno califica
-
-        selected_video = qualified_videos[0]  # El mejor video
-
-        tasks_status[task_id]["data"]["discovered_video"] = {
-            "url": selected_video.url,
-            "title": selected_video.title,
-            "author": selected_video.author,
-            "views": selected_video.views,
-            "viral_potential": selected_video.predicted_viral_potential,
-            "engagement_rate": selected_video.engagement_rate
-        }
-
-        logger.info(f"[AutoFlow {task_id}] Selected video: {selected_video.title[:50]}... (Viral: {selected_video.predicted_viral_potential})")
-
-        # PASO 2: Descargar el video
-        tasks_status[task_id]["status"] = "downloading"
-        tasks_status[task_id]["progress"] = f"Descargando video viral..."
-        tasks_status[task_id]["step"] = 2
-
-        def _on_viral_download_progress(info):
-            tasks_status[task_id]["download_progress"] = info
-            pct = info.get("percent", 0)
-            spd = info.get("speed_mb", 0)
-            tasks_status[task_id]["progress"] = f"Descargando video viral... {pct}% ({spd} MB/s)"
-
-        logger.info(f"[AutoFlow {task_id}] Step 2: Downloading video...")
-        loop = asyncio.get_event_loop()
-        download_result = await loop.run_in_executor(
-            None,
-            lambda: downloader.download(selected_video.url,
-                                        progress_callback=_on_viral_download_progress)
-        )
-
-        if not download_result.get('success'):
-            tasks_status[task_id] = {
-                "status": "error",
-                "error": f"Error descargando: {download_result.get('error', 'Unknown error')}"
-            }
-            return JSONResponse({
-                "success": False,
-                "task_id": task_id,
-                "error": f"Download failed: {download_result.get('error')}"
-            })
-
-        # El downloader retorna 'filename' no 'file_path'
-        downloaded_path = download_result.get('filename') or download_result.get('file_path')
-        tasks_status[task_id]["data"]["downloaded_file"] = downloaded_path
-
-        logger.info(f"[AutoFlow {task_id}] Downloaded to: {downloaded_path}")
-
-        # PASO 3: Procesar video (quitar marca de agua)
-        processed_path = downloaded_path  # Por defecto usar el original
-
-        if request.process_video:
-            tasks_status[task_id]["status"] = "processing"
-            tasks_status[task_id]["progress"] = "Procesando video..."
-            tasks_status[task_id]["step"] = 3
-
-            logger.info(f"[AutoFlow {task_id}] Step 3: Processing video...")
-
-            try:
-                output_filename = f"processed_{uuid.uuid4().hex}.mp4"
-                loop = asyncio.get_event_loop()
-                processed_path = await loop.run_in_executor(
-                    None,
-                    lambda: processor.process_video(downloaded_path, output_filename)
-                )
-                tasks_status[task_id]["data"]["processed_file"] = processed_path
-                logger.info(f"[AutoFlow {task_id}] Processed: {processed_path}")
-            except Exception as proc_err:
-                processed_path = downloaded_path
-                logger.warning(f"[AutoFlow {task_id}] Processing error: {proc_err}, using original")
-
-        # PASO 4: Generar descripción viral
-        tasks_status[task_id]["status"] = "generating_description"
-        tasks_status[task_id]["progress"] = "Generando descripción viral..."
-        tasks_status[task_id]["step"] = 4
-
-        logger.info(f"[AutoFlow {task_id}] Step 4: Generating viral description...")
-
-        if request.custom_description:
-            final_description = request.custom_description
-        else:
-            try:
-                desc_result = await description_gen.generate(
-                    video_info={
-                        "title": selected_video.title,
-                        "category": request.category,
-                        "hashtags": selected_video.hashtags
-                    },
-                    category=request.category,
-                    language="es"
-                )
-                final_description = getattr(desc_result, 'full_text', None) or str(desc_result)
-            except Exception as desc_err:
-                logger.warning(f"[AutoFlow {task_id}] Description generation failed: {desc_err}")
-                # Descripción por defecto
-                hashtags = " ".join([f"#{h}" for h in selected_video.hashtags[:5]]) if selected_video.hashtags else "#viral #fyp #trending"
-                final_description = f"🔥 {selected_video.title[:80]} {hashtags}"
-
-        tasks_status[task_id]["data"]["description"] = final_description
-
-        # Registrar el video procesado en analytics (alimenta el dashboard)
-        analytics_video_id = None
+    async def _run_auto_flow():
         try:
-            analytics_video_id = analytics_manager.track_video_processed({
+            logger.info(f"[AutoFlow {task_id}] Starting - Category: {request.category}")
+
+            # PASO 1: Descubrir videos virales
+            logger.info(f"[AutoFlow {task_id}] Step 1: Discovering viral videos...")
+            videos = await tiktok_discovery.discover_category(
+                category_id=request.category,
+                limit=10,  # Buscar 10 para elegir el mejor
+                sort_by=request.sort_by
+            )
+
+            if not videos:
+                tasks_status[task_id] = {
+                    "status": "error",
+                    "error": "No se encontraron videos virales"
+                }
+                return
+
+            # Filtrar por potencial viral mínimo
+            qualified_videos = [
+                v for v in videos
+                if v.predicted_viral_potential >= request.min_viral_potential
+            ]
+
+            if not qualified_videos:
+                qualified_videos = videos[:request.max_videos]  # Tomar los mejores si ninguno califica
+
+            selected_video = qualified_videos[0]  # El mejor video
+
+            tasks_status[task_id]["data"]["discovered_video"] = {
                 "url": selected_video.url,
-                "platform": "tiktok",
                 "title": selected_video.title,
-                "category": request.category,
-                "viral_score": getattr(selected_video, "predicted_viral_potential", 0),
-                "local_path": processed_path,
-                "description": final_description,
-                "hashtags": selected_video.hashtags,
-            })
-        except Exception as track_err:
-            logger.warning(f"[AutoFlow {task_id}] No se pudo registrar en analytics: {track_err}")
+                "author": selected_video.author,
+                "views": selected_video.views,
+                "viral_potential": selected_video.predicted_viral_potential,
+                "engagement_rate": selected_video.engagement_rate
+            }
 
-        # PASO 5 & 6: Subir a TikTok (si está habilitado)
-        if request.auto_upload:
-            tasks_status[task_id]["status"] = "uploading"
-            tasks_status[task_id]["progress"] = "Subiendo a TikTok..."
-            tasks_status[task_id]["step"] = 5
+            logger.info(f"[AutoFlow {task_id}] Selected video: {selected_video.title[:50]}... (Viral: {selected_video.predicted_viral_potential})")
 
-            logger.info(f"[AutoFlow {task_id}] Step 5: Uploading to TikTok...")
+            # PASO 2: Descargar el video
+            tasks_status[task_id]["status"] = "downloading"
+            tasks_status[task_id]["progress"] = f"Descargando video viral..."
+            tasks_status[task_id]["step"] = 2
 
+            def _on_viral_download_progress(info):
+                tasks_status[task_id]["download_progress"] = info
+                pct = info.get("percent", 0)
+                spd = info.get("speed_mb", 0)
+                tasks_status[task_id]["progress"] = f"Descargando video viral... {pct}% ({spd} MB/s)"
+
+            logger.info(f"[AutoFlow {task_id}] Step 2: Downloading video...")
+            loop = asyncio.get_event_loop()
+            download_result = await loop.run_in_executor(
+                None,
+                lambda: downloader.download(selected_video.url,
+                                            progress_callback=_on_viral_download_progress)
+            )
+
+            if not download_result.get('success'):
+                tasks_status[task_id] = {
+                    "status": "error",
+                    "error": f"Error descargando: {download_result.get('error', 'Unknown error')}"
+                }
+                return
+
+            # El downloader retorna 'filename' no 'file_path'
+            downloaded_path = download_result.get('filename') or download_result.get('file_path')
+            tasks_status[task_id]["data"]["downloaded_file"] = downloaded_path
+
+            logger.info(f"[AutoFlow {task_id}] Downloaded to: {downloaded_path}")
+
+            # PASO 3: Procesar video (quitar marca de agua)
+            processed_path = downloaded_path  # Por defecto usar el original
+
+            if request.process_video:
+                tasks_status[task_id]["status"] = "processing"
+                tasks_status[task_id]["progress"] = "Procesando video..."
+                tasks_status[task_id]["step"] = 3
+
+                logger.info(f"[AutoFlow {task_id}] Step 3: Processing video...")
+
+                try:
+                    output_filename = f"processed_{uuid.uuid4().hex}.mp4"
+                    loop = asyncio.get_event_loop()
+                    processed_path = await loop.run_in_executor(
+                        None,
+                        lambda: processor.process_video(downloaded_path, output_filename)
+                    )
+                    tasks_status[task_id]["data"]["processed_file"] = processed_path
+                    logger.info(f"[AutoFlow {task_id}] Processed: {processed_path}")
+                except Exception as proc_err:
+                    processed_path = downloaded_path
+                    logger.warning(f"[AutoFlow {task_id}] Processing error: {proc_err}, using original")
+
+            # PASO 4: Generar descripción viral
+            tasks_status[task_id]["status"] = "generating_description"
+            tasks_status[task_id]["progress"] = "Generando descripción viral..."
+            tasks_status[task_id]["step"] = 4
+
+            logger.info(f"[AutoFlow {task_id}] Step 4: Generating viral description...")
+
+            if request.custom_description:
+                final_description = request.custom_description
+            else:
+                try:
+                    desc_result = await description_gen.generate(
+                        video_info={
+                            "title": selected_video.title,
+                            "category": request.category,
+                            "hashtags": selected_video.hashtags
+                        },
+                        category=request.category,
+                        language="es"
+                    )
+                    final_description = getattr(desc_result, 'full_text', None) or str(desc_result)
+                except Exception as desc_err:
+                    logger.warning(f"[AutoFlow {task_id}] Description generation failed: {desc_err}")
+                    # Descripción por defecto
+                    hashtags = " ".join([f"#{h}" for h in selected_video.hashtags[:5]]) if selected_video.hashtags else "#viral #fyp #trending"
+                    final_description = f"🔥 {selected_video.title[:80]} {hashtags}"
+
+            tasks_status[task_id]["data"]["description"] = final_description
+
+            # Registrar el video procesado en analytics (alimenta el dashboard)
+            analytics_video_id = None
             try:
-                upload_result = await uploader.upload_video(
-                    video_path=processed_path,
-                    description=final_description,
-                    headless=request.headless
-                )
+                analytics_video_id = analytics_manager.track_video_processed({
+                    "url": selected_video.url,
+                    "platform": "tiktok",
+                    "title": selected_video.title,
+                    "category": request.category,
+                    "viral_score": getattr(selected_video, "predicted_viral_potential", 0),
+                    "local_path": processed_path,
+                    "description": final_description,
+                    "hashtags": selected_video.hashtags,
+                })
+            except Exception as track_err:
+                logger.warning(f"[AutoFlow {task_id}] No se pudo registrar en analytics: {track_err}")
 
-                tasks_status[task_id]["data"]["upload_result"] = upload_result
+            # PASO 5 & 6: Subir a TikTok (si está habilitado)
+            if request.auto_upload:
+                tasks_status[task_id]["status"] = "uploading"
+                tasks_status[task_id]["progress"] = "Subiendo a TikTok..."
+                tasks_status[task_id]["step"] = 5
 
-                if upload_result.get('success'):
-                    tasks_status[task_id]["status"] = "completed"
-                    tasks_status[task_id]["progress"] = "✅ Video subido exitosamente!"
-                    tasks_status[task_id]["step"] = 6
-                    logger.info(f"[AutoFlow {task_id}] Upload successful!")
-                else:
+                logger.info(f"[AutoFlow {task_id}] Step 5: Uploading to TikTok...")
+
+                try:
+                    upload_result = await uploader.upload_video(
+                        video_path=processed_path,
+                        description=final_description,
+                        headless=request.headless
+                    )
+
+                    tasks_status[task_id]["data"]["upload_result"] = upload_result
+
+                    if upload_result.get('success'):
+                        tasks_status[task_id]["status"] = "completed"
+                        tasks_status[task_id]["progress"] = "✅ Video subido exitosamente!"
+                        tasks_status[task_id]["step"] = 6
+                        logger.info(f"[AutoFlow {task_id}] Upload successful!")
+                    else:
+                        tasks_status[task_id]["status"] = "upload_failed"
+                        tasks_status[task_id]["progress"] = f"⚠️ Error en upload: {upload_result.get('error')}"
+                        logger.error(f"[AutoFlow {task_id}] Upload failed: {upload_result.get('error')}")
+
+                    if analytics_video_id:
+                        try:
+                            analytics_manager.track_upload(
+                                analytics_video_id,
+                                tiktok_url=upload_result.get('url'),
+                                success=bool(upload_result.get('success')),
+                                error=upload_result.get('error'),
+                            )
+                        except Exception as track_err:
+                            logger.warning(f"[AutoFlow {task_id}] No se pudo registrar el upload: {track_err}")
+
+                except Exception as upload_err:
                     tasks_status[task_id]["status"] = "upload_failed"
-                    tasks_status[task_id]["progress"] = f"⚠️ Error en upload: {upload_result.get('error')}"
-                    logger.error(f"[AutoFlow {task_id}] Upload failed: {upload_result.get('error')}")
+                    tasks_status[task_id]["data"]["upload_error"] = str(upload_err)
+                    logger.error(f"[AutoFlow {task_id}] Upload error: {upload_err}")
+                    if analytics_video_id:
+                        try:
+                            analytics_manager.track_upload(
+                                analytics_video_id, success=False, error=str(upload_err)
+                            )
+                        except Exception:
+                            pass
+            else:
+                tasks_status[task_id]["status"] = "ready_to_upload"
+                tasks_status[task_id]["progress"] = "✅ Video listo para subir manualmente"
 
-                if analytics_video_id:
-                    try:
-                        analytics_manager.track_upload(
-                            analytics_video_id,
-                            tiktok_url=upload_result.get('url'),
-                            success=bool(upload_result.get('success')),
-                            error=upload_result.get('error'),
-                        )
-                    except Exception as track_err:
-                        logger.warning(f"[AutoFlow {task_id}] No se pudo registrar el upload: {track_err}")
+            tasks_status[task_id]["data"]["video_ready"] = processed_path
+            tasks_status[task_id]["data"]["description"] = final_description
 
-            except Exception as upload_err:
-                tasks_status[task_id]["status"] = "upload_failed"
-                tasks_status[task_id]["data"]["upload_error"] = str(upload_err)
-                logger.error(f"[AutoFlow {task_id}] Upload error: {upload_err}")
-                if analytics_video_id:
-                    try:
-                        analytics_manager.track_upload(
-                            analytics_video_id, success=False, error=str(upload_err)
-                        )
-                    except Exception:
-                        pass
-        else:
-            tasks_status[task_id]["status"] = "ready_to_upload"
-            tasks_status[task_id]["progress"] = "✅ Video listo para subir manualmente"
+        except Exception as e:
+            logger.error(f"[AutoFlow {task_id}] Error: {e}", exc_info=True)
+            tasks_status[task_id] = {
+                "status": "error",
+                "error": str(e)
+            }
 
-        return JSONResponse({
-            "success": True,
-            "task_id": task_id,
-            "message": "Auto-flow completed" if not request.auto_upload else "Video uploaded!",
-            "data": tasks_status[task_id]["data"],
-            "video_ready": processed_path,
-            "description": final_description
-        })
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"[AutoFlow {task_id}] Error: {e}", exc_info=True)
-        tasks_status[task_id] = {
-            "status": "error",
-            "error": str(e)
-        }
-        return _error_response(500, "PROCESSING_FAILED", f"Auto-flow failed: {e}", retryable=True)
+    background_tasks.add_task(_run_auto_flow)
+    return JSONResponse({
+        "success": True,
+        "task_id": task_id,
+        "status": "discovering",
+        "message": "Procesando en segundo plano. Consulta /api/task/{task_id} para el estado."
+    })
 
 
 @app.post("/api/tiktok/login")
