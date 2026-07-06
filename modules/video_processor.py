@@ -178,7 +178,7 @@ class VideoProcessor:
 
             # Crear fondo desenfocado escalado y estirado
             background = clip.resized(height=self.target_height)
-            background = background.crop(
+            background = background.cropped(
                 x_center=background.w / 2,
                 width=self.target_width,
                 height=self.target_height
@@ -191,7 +191,7 @@ class VideoProcessor:
                 blurred = pil_image.filter(ImageFilter.GaussianBlur(radius=30))
                 return np.array(blurred)
 
-            background = background.fl(blur_frame)
+            background = background.transform(blur_frame)
 
             # Redimensionar el video original para que quepa en el centro
             if clip.w / clip.h > self.target_width / self.target_height:
@@ -340,7 +340,7 @@ class VideoProcessor:
                 adjusted = np.clip(frame * adjustment, 0, 255).astype(np.uint8)
                 return adjusted
 
-            adjusted_clip = clip.fl(color_adjust)
+            adjusted_clip = clip.transform(color_adjust)
 
             adjusted_clip.write_videofile(
                 output_path,

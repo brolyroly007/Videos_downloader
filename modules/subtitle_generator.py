@@ -78,7 +78,7 @@ class SubtitleGenerator:
             audio_path = str(self.temp_path / "temp_audio.wav")
 
             clip = VideoFileClip(video_path)
-            clip.audio.write_audiofile(audio_path, codec='pcm_s16le', verbose=False, logger=None)
+            clip.audio.write_audiofile(audio_path, codec='pcm_s16le', logger=None)
             clip.close()
 
             logger.info(f"Audio extracted: {audio_path}")
@@ -208,9 +208,9 @@ class SubtitleGenerator:
             # Función generadora de TextClip para cada subtítulo
             def make_textclip(txt):
                 return TextClip(
-                    txt,
+                    text=txt,
                     font=font,
-                    fontsize=font_size,
+                    font_size=font_size,
                     color=font_color,
                     stroke_color=stroke_color,
                     stroke_width=stroke_width,
@@ -230,7 +230,7 @@ class SubtitleGenerator:
                 y_pos = 'center'
 
             # Posicionar subtítulos
-            subtitles = subtitles.set_position((position[0], y_pos))
+            subtitles = subtitles.with_position((position[0], y_pos))
 
             # Componer video con subtítulos
             result = CompositeVideoClip([video, subtitles])
