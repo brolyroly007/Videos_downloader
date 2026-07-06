@@ -70,7 +70,7 @@
 
 ### 🔴 Crítico
 
-- [ ] F1. No compila: `src/lib/api.ts` y `src/lib/utils.ts` se importan en toda la base pero no existen en git. Crear/commitear `lib/utils.ts` (`cn`) y `lib/api.ts` (cliente API tipado).
+- [x] F1. No compila: `src/lib/api.ts` y `src/lib/utils.ts` se importan en toda la base pero no existen en git. Crear/commitear `lib/utils.ts` (`cn`) y `lib/api.ts` (cliente API tipado). → Creados: `lib/utils.ts` con `cn` (clsx+tailwind-merge) y `lib/api.ts` con cliente tipado (VideoInfo/FileInfo/ProcessingOptions/ProcessResult) cableado a los endpoints reales (`/api/video-info`, `/api/files/downloads|processed`, `/api/complete-flow`, `/api/clear-session`) usando `NEXT_PUBLIC_API_URL`. `npx tsc --noEmit` pasa sin errores. **Causa raíz:** el `.gitignore` raíz tenía `lib/` (regla Python) que ignoraba `frontend/src/lib`; se ancló a `/lib/` `/lib64/`.
 - [ ] F2. URLs hardcodeadas a `http://localhost:8000` (output-section.tsx:133,144,233,269; discover-section.tsx:103). Centralizar en `NEXT_PUBLIC_API_URL`.
 - [ ] F3. Dockerfile copia `/app/.next/standalone` (Dockerfile:36-37) pero `next.config.ts` no declara `output: "standalone"`. Añadir la línea.
 

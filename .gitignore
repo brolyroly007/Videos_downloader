@@ -11,8 +11,9 @@ develop-eggs/
 dist/
 eggs/
 .eggs/
-lib/
-lib64/
+# Ancladas a la raíz para no ignorar el código fuente del frontend (frontend/src/lib)
+/lib/
+/lib64/
 parts/
 sdist/
 var/
