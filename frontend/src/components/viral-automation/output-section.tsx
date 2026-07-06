@@ -132,10 +132,10 @@ function OutputSectionBase({
                         size="sm"
                         className="bg-transparent border-gray-600 text-white hover:bg-gray-700"
                         onClick={() => {
-                          const link = document.createElement('a')
-                          link.href = `${API_BASE_URL}/files/processed/${selectedJob.result?.videoPath?.split('/').pop()}`
-                          link.download = selectedJob.result?.videoPath?.split('/').pop() || 'video.mp4'
-                          link.click()
+                          // ?download=1 hace que el backend envíe Content-Disposition:
+                          // attachment (el atributo download se ignora cross-origin).
+                          const name = selectedJob.result?.videoPath?.split('/').pop()
+                          window.open(`${API_BASE_URL}/files/processed/${name}?download=1`, '_blank', 'noopener,noreferrer')
                         }}
                       >
                         <Download className="size-4 mr-2" />
@@ -224,7 +224,7 @@ function OutputSectionBase({
                           aria-label={`Abrir ${file.name}`}
                           className="h-6 w-6 p-0 text-gray-400 hover:text-white"
                           onClick={() => {
-                            window.open(`${API_BASE_URL}/files/downloads/${file.name}`, '_blank', 'noopener,noreferrer')
+                            window.open(`${API_BASE_URL}/files/downloads/${file.name}?download=1`, '_blank', 'noopener,noreferrer')
                           }}
                         >
                           <Download className="size-3" />
@@ -261,7 +261,7 @@ function OutputSectionBase({
                           aria-label={`Abrir ${file.name}`}
                           className="h-6 w-6 p-0 text-gray-400 hover:text-white"
                           onClick={() => {
-                            window.open(`${API_BASE_URL}/files/processed/${file.name}`, '_blank', 'noopener,noreferrer')
+                            window.open(`${API_BASE_URL}/files/processed/${file.name}?download=1`, '_blank', 'noopener,noreferrer')
                           }}
                         >
                           <Download className="size-3" />

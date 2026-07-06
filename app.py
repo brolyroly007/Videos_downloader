@@ -1347,20 +1347,26 @@ def _safe_file_in_dir(base_dir: str, filename: str) -> Path:
 
 
 @app.get("/files/downloads/{filename}")
-async def serve_download(filename: str):
-    """Sirve archivos descargados"""
+async def serve_download(filename: str, download: bool = False):
+    """Sirve archivos descargados. Con ?download=1 fuerza la descarga
+    (Content-Disposition: attachment); si no, se sirve inline (streaming)."""
     file_path = _safe_file_in_dir("downloads", filename)
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
+    if download:
+        return FileResponse(file_path, filename=file_path.name)
     return FileResponse(file_path)
 
 
 @app.get("/files/processed/{filename}")
-async def serve_processed(filename: str):
-    """Sirve archivos procesados"""
+async def serve_processed(filename: str, download: bool = False):
+    """Sirve archivos procesados. Con ?download=1 fuerza la descarga; si no,
+    se sirve inline para poder previsualizar el video en el navegador."""
     file_path = _safe_file_in_dir("processed", filename)
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
+    if download:
+        return FileResponse(file_path, filename=file_path.name)
     return FileResponse(file_path)
 
 

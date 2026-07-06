@@ -317,7 +317,7 @@ export function DiscoverSection({ onAddToQueue }: DiscoverSectionProps) {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => window.open(video.url, '_blank')}
+                          onClick={() => window.open(video.url, '_blank', 'noopener,noreferrer')}
                           className="h-8 px-3 border-gray-600 text-gray-300 hover:text-white hover:border-white text-xs"
                         >
                           <ExternalLink className="size-3 mr-1" />
