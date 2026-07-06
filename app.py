@@ -31,7 +31,7 @@ from modules.analytics import AnalyticsManager
 from modules.queue_manager import QueueManager, JobPriority
 from modules.hashtag_recommender import HashtagRecommender
 from modules.backup_manager import BackupManager
-from modules.auth import AuthManager, get_current_user, get_optional_user, require_role
+from modules.auth import auth_manager, get_current_user, get_optional_user, require_role
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -78,7 +78,8 @@ analytics_manager = AnalyticsManager()
 queue_manager = QueueManager(max_workers=3)
 hashtag_recommender = HashtagRecommender()
 backup_manager = BackupManager()
-auth_manager = AuthManager(enabled=os.getenv("AUTH_ENABLED", "false").lower() == "true")
+# auth_manager es la instancia compartida de modules.auth (misma que usan
+# las dependencias get_current_user/require_role); se configura con AUTH_ENABLED.
 
 # Diccionario para almacenar el estado de las tareas
 tasks_status = {}
