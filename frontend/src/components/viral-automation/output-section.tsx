@@ -25,7 +25,7 @@ interface OutputSectionProps {
   processedFiles: FileInfo[]
 }
 
-export function OutputSection({
+function OutputSectionBase({
   selectedJob,
   downloadedFiles,
   processedFiles,
@@ -285,3 +285,5 @@ export function OutputSection({
     </div>
   )
 }
+
+export const OutputSection = React.memo(OutputSectionBase)

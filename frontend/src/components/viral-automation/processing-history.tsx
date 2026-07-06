@@ -14,7 +14,7 @@ interface ProcessingHistoryProps {
   onDelete: (id: string) => void
 }
 
-export function ProcessingHistory({
+function ProcessingHistoryBase({
   jobs,
   selectedId,
   onSelect,
@@ -105,3 +105,5 @@ export function ProcessingHistory({
     </div>
   )
 }
+
+export const ProcessingHistory = React.memo(ProcessingHistoryBase)

@@ -40,7 +40,7 @@ interface InputSectionProps {
   onClearAll: () => void
 }
 
-export function InputSection({
+function InputSectionBase({
   url,
   setUrl,
   description,
@@ -292,3 +292,5 @@ export function InputSection({
     </div>
   )
 }
+
+export const InputSection = React.memo(InputSectionBase)
