@@ -1195,57 +1195,75 @@ async def auto_flow_endpoint(request: AutoFlowRequest, background_tasks: Backgro
     })
 
 
-@app.post("/api/tiktok/login")
-async def tiktok_login_endpoint():
-    """
-    🔐 Abre el navegador para hacer login en TikTok manualmente.
-    Las cookies se guardarán para futuros uploads automáticos.
+# Estado del login manual de TikTok (flujo asíncrono, una sola sesión a la vez)
+tiktok_login_state = {"running": False, "status": "idle", "message": ""}
 
-    Solo necesitas hacer esto UNA VEZ.
-    """
+
+async def _run_tiktok_login():
+    """Abre el navegador para el login manual de TikTok y guarda cookies."""
+    from playwright.async_api import async_playwright
+    tiktok_login_state.update(running=True, status="in_progress",
+                              message="Abriendo navegador. Inicia sesión en la ventana.")
     try:
-        from playwright.async_api import async_playwright
-
         logger.info("Opening browser for TikTok login...")
-
         async with async_playwright() as p:
+            # El login manual necesita ventana visible (headed) por diseño.
             browser = await p.chromium.launch(
                 headless=False,
                 args=['--disable-blink-features=AutomationControlled']
             )
+            try:
+                context = await browser.new_context(
+                    viewport={'width': 1280, 'height': 720},
+                    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                )
+                page = await context.new_page()
+                await page.goto("https://www.tiktok.com/login")
 
-            context = await browser.new_context(
-                viewport={'width': 1280, 'height': 720},
-                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            )
+                logger.info("Waiting for manual login (max 5 minutes)...")
+                login_success = await uploader.wait_for_manual_login(page, timeout=300000)
 
-            page = await context.new_page()
-
-            # Ir a login de TikTok
-            await page.goto("https://www.tiktok.com/login")
-
-            logger.info("Waiting for manual login (max 5 minutes)...")
-
-            # Esperar a que el usuario haga login
-            login_success = await uploader.wait_for_manual_login(page, timeout=300000)
-
-            if login_success:
-                await uploader.save_cookies(page)
+                if login_success:
+                    await uploader.save_cookies(page)
+                    tiktok_login_state.update(
+                        status="success",
+                        message="Login exitoso. Cookies guardadas; ya puedes usar auto_upload=true.")
+                else:
+                    tiktok_login_state.update(
+                        status="failed", message="Login timeout o cancelado.")
+            finally:
                 await browser.close()
-                return JSONResponse({
-                    "success": True,
-                    "message": "Login exitoso! Cookies guardadas. Ahora puedes usar auto_upload=true"
-                })
-            else:
-                await browser.close()
-                return JSONResponse({
-                    "success": False,
-                    "message": "Login timeout o cancelado"
-                })
-
     except Exception as e:
         logger.error(f"Login error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        tiktok_login_state.update(status="error", message=str(e))
+    finally:
+        tiktok_login_state["running"] = False
+
+
+@app.post("/api/tiktok/login")
+async def tiktok_login_endpoint(background_tasks: BackgroundTasks,
+                                _admin=Depends(require_role("admin"))):
+    """
+    🔐 Inicia (en segundo plano) el login manual de TikTok. Devuelve de
+    inmediato; consulta el progreso en GET /api/tiktok/login-status.
+    Solo un login a la vez.
+    """
+    if tiktok_login_state["running"]:
+        raise HTTPException(status_code=409, detail="Ya hay un login de TikTok en curso")
+
+    background_tasks.add_task(_run_tiktok_login)
+    return JSONResponse({
+        "success": True,
+        "status": "started",
+        "message": "Login iniciado. Completa el inicio de sesión en la ventana del navegador; "
+                   "consulta el estado en /api/tiktok/login-status."
+    })
+
+
+@app.get("/api/tiktok/login-status")
+async def tiktok_login_status():
+    """Devuelve el estado del login manual de TikTok en curso."""
+    return JSONResponse({"success": True, **tiktok_login_state})
 
 
 @app.get("/api/tiktok/session-status")
