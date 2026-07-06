@@ -273,6 +273,56 @@ class VideoProcessor:
             logger.error(f"Error creating solid background: {str(e)}")
             raise
 
+    def apply_effects_combined(self, video_path: str, output_path: str,
+                               apply_mirror: bool = True,
+                               apply_speed: bool = True, speed_factor: float = 1.02,
+                               apply_color_adjust: bool = True,
+                               color_adjustment: float = 1.05) -> str:
+        """
+        Aplica espejo, cambio de velocidad y ajuste de color en UN solo render.
+
+        Antes cada efecto escribia su propio archivo (3 re-encodes H.264
+        encadenados = 3x tiempo y perdida de calidad generacional). Aqui se
+        cargan los efectos sobre un unico clip y se escribe una sola vez.
+        """
+        try:
+            logger.info("Applying combined effects (mirror/speed/color)...")
+            clip = VideoFileClip(video_path)
+            result = clip
+
+            effects = []
+            if apply_mirror:
+                effects.append(MirrorX())
+            if apply_speed:
+                effects.append(MultiplySpeed(speed_factor))
+            if effects:
+                result = result.with_effects(effects)
+
+            if apply_color_adjust:
+                def color_adjust(get_frame, t):
+                    frame = get_frame(t)
+                    return np.clip(frame * color_adjustment, 0, 255).astype(np.uint8)
+                result = result.transform(color_adjust)
+
+            result.write_videofile(
+                output_path,
+                codec='libx264',
+                audio_codec='aac',
+                temp_audiofile=str(self.temp_path / f'temp-audio-{uuid.uuid4().hex}.m4a'),
+                remove_temp=True,
+                fps=clip.fps
+            )
+
+            clip.close()
+            if result is not clip:
+                result.close()
+            logger.info(f"Combined effects applied: {output_path}")
+            return output_path
+
+        except Exception as e:
+            logger.error(f"Error applying combined effects: {str(e)}")
+            raise
+
     def apply_mirror_effect(self, video_path: str, output_path: str) -> str:
         """
         Aplica efecto espejo horizontal (mirror) para evadir detección de copyright
@@ -400,6 +450,7 @@ class VideoProcessor:
 
             current_video = video_path
             output_path = str(self.output_path / output_filename)
+            intermediates = []  # temporales a limpiar al final
 
             # 1. Re-enmarcar si es necesario
             if reframe:
@@ -414,24 +465,35 @@ class VideoProcessor:
                         current_video = self.create_blur_background(current_video, temp_output)
                     else:
                         current_video = self.create_solid_background(current_video, temp_output, background_color)
+                    intermediates.append(current_video)
 
-            # 2. Aplicar efectos anti-copyright
-            if apply_mirror:
-                temp_output = str(self.temp_path / f"mirrored_{output_filename}")
-                current_video = self.apply_mirror_effect(current_video, temp_output)
-
-            if apply_speed:
-                temp_output = str(self.temp_path / f"speed_{output_filename}")
-                current_video = self.apply_speed_change(current_video, temp_output, speed_factor)
-
-            if apply_color_adjust:
-                temp_output = str(self.temp_path / f"color_{output_filename}")
-                current_video = self.adjust_color_tone(current_video, temp_output)
+            # 2. Aplicar efectos anti-copyright (espejo + velocidad + color) en
+            #    un solo render en vez de tres archivos encadenados.
+            if apply_mirror or apply_speed or apply_color_adjust:
+                temp_output = str(self.temp_path / f"effects_{output_filename}")
+                current_video = self.apply_effects_combined(
+                    current_video, temp_output,
+                    apply_mirror=apply_mirror,
+                    apply_speed=apply_speed, speed_factor=speed_factor,
+                    apply_color_adjust=apply_color_adjust
+                )
+                intermediates.append(current_video)
 
             # 3. Mover archivo final a la carpeta de salida
             if current_video != output_path:
                 import shutil
                 shutil.move(current_video, output_path)
+                # el archivo movido ya no está en temp
+                if current_video in intermediates:
+                    intermediates.remove(current_video)
+
+            # 4. Limpiar los intermedios que hayan quedado en temp/
+            for f in intermediates:
+                try:
+                    if os.path.exists(f):
+                        os.remove(f)
+                except Exception as clean_err:
+                    logger.warning(f"No se pudo borrar intermedio {f}: {clean_err}")
 
             logger.info(f"Video processing completed: {output_path}")
             return output_path
