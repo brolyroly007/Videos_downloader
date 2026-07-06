@@ -791,7 +791,7 @@ async def add_to_queue(request: AddToQueueRequest):
         from datetime import datetime
 
         job = AutomationJob(
-            id=f"job_{int(datetime.now().timestamp())}",
+            id=f"job_{uuid.uuid4().hex[:12]}",
             video_url=request.url,
             platform=video.platform if video else 'unknown',
             viral_score=video.viral_score if video else 0,

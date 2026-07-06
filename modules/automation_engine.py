@@ -6,6 +6,7 @@ Coordina detección, procesamiento y publicación de videos virales
 import asyncio
 import os
 import json
+import uuid
 import sqlite3
 import logging
 from datetime import datetime, timedelta
@@ -520,7 +521,7 @@ class AutomationEngine:
 
                     # Crear job
                     job = AutomationJob(
-                        id=f"job_{video.video_id}_{int(datetime.now().timestamp())}",
+                        id=f"job_{video.video_id}_{uuid.uuid4().hex[:8]}",
                         video_url=video.url,
                         platform=video.platform,
                         viral_score=video.viral_score,
@@ -724,7 +725,7 @@ class AutomationEngine:
         video = await self.detector.analyze_url(url)
 
         job = AutomationJob(
-            id=f"manual_{int(datetime.now().timestamp())}",
+            id=f"manual_{uuid.uuid4().hex[:12]}",
             video_url=url,
             platform=video.platform if video else 'unknown',
             viral_score=video.viral_score if video else 0,

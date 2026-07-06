@@ -5,6 +5,7 @@ Dashboard de estadísticas y métricas para videos procesados
 
 import sqlite3
 import json
+import uuid
 import logging
 from typing import List, Dict, Optional
 from dataclasses import dataclass, asdict
@@ -149,7 +150,7 @@ class AnalyticsDatabase:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        video_id = video_data.get('id', f"vid_{int(datetime.now().timestamp())}")
+        video_id = video_data.get('id', f"vid_{uuid.uuid4().hex[:12]}")
 
         cursor.execute('''
             INSERT OR REPLACE INTO processed_videos
