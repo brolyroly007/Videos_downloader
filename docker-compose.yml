@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Backend API (FastAPI)
   backend:
@@ -14,14 +12,15 @@ services:
       - ./processed:/app/processed
       - ./cookies:/app/cookies
       - ./cache:/app/cache
-      - ./automation.db:/app/automation.db
-      - ./analytics.db:/app/analytics.db
-      - ./queue.db:/app/queue.db
-      - ./hashtags.db:/app/hashtags.db
+      # Las bases SQLite viven en un volumen (directorio), no como bind-mount
+      # de archivos sueltos: eso evitaba que Docker creara directorios cuando
+      # el .db no existía en el host, y persiste también auth.db.
+      - db-data:/app/data
     environment:
       - HOST=0.0.0.0
       - PORT=8000
       - WHISPER_MODEL_SIZE=base
+      - DATA_DIR=/app/data
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
     healthcheck:
@@ -55,8 +54,10 @@ services:
   redis:
     image: redis:7-alpine
     container_name: viral-automation-redis
+    # Solo accesible desde localhost del host (y por la red interna de compose);
+    # no se expone a toda la red. El backend lo alcanza por redis:6379.
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis-data:/data
     restart: unless-stopped
@@ -68,7 +69,8 @@ services:
     image: alpine:latest
     container_name: viral-automation-backup
     volumes:
-      - ./:/app
+      - db-data:/data:ro
+      - ./cookies:/cookies:ro
       - ./backups:/backups
     entrypoint: /bin/sh
     command: >
@@ -76,8 +78,8 @@ services:
       while true; do
         echo 'Running backup...'
         mkdir -p /backups/$$(date +%Y%m%d)
-        cp /app/*.db /backups/$$(date +%Y%m%d)/ 2>/dev/null || true
-        cp -r /app/cookies /backups/$$(date +%Y%m%d)/ 2>/dev/null || true
+        cp /data/*.db /backups/$$(date +%Y%m%d)/ 2>/dev/null || true
+        cp -r /cookies /backups/$$(date +%Y%m%d)/ 2>/dev/null || true
         # Mantener solo los últimos 7 días de backups
         find /backups -type d -mtime +7 -exec rm -rf {} + 2>/dev/null || true
         echo 'Backup completed at' $$(date)
@@ -94,3 +96,4 @@ networks:
 
 volumes:
   redis-data:
+  db-data:

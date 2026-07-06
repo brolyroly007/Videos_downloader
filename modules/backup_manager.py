@@ -30,13 +30,11 @@ class BackupManager:
         self.backup_dir.mkdir(exist_ok=True)
         self.max_backups = max_backups
 
-        # Archivos a respaldar
+        # Archivos a respaldar (bajo DATA_DIR para coincidir con la ubicación real)
+        data_dir = os.getenv("DATA_DIR", ".")
         self.db_files = [
-            "automation.db",
-            "analytics.db",
-            "queue.db",
-            "hashtags.db",
-            "auth.db"
+            os.path.join(data_dir, name)
+            for name in ("automation.db", "analytics.db", "queue.db", "hashtags.db", "auth.db")
         ]
 
         self.important_dirs = [

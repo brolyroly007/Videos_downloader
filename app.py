@@ -62,21 +62,29 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+# Directorio de datos persistentes (SQLite). En Docker se monta un volumen
+# aquí; por defecto es el directorio actual para compatibilidad local.
+DATA_DIR = os.getenv("DATA_DIR", ".")
+os.makedirs(DATA_DIR, exist_ok=True)
+
+def _db(name: str) -> str:
+    return os.path.join(DATA_DIR, name)
+
 # Inicializar módulos
 downloader = VideoDownloader("downloads")
 processor = VideoProcessor("temp", "processed")
 subtitle_gen = None  # Se inicializará bajo demanda
 uploader = TikTokUploader("cookies")
 viral_detector = ViralDetector()
-automation_db = AutomationDatabase()
+automation_db = AutomationDatabase(_db("automation.db"))
 automation_engine = None  # Se inicializa bajo demanda
 tiktok_discovery = TikTokDiscovery()  # Descubrimiento de TikTok con yt-dlp
 
 # Nuevos módulos
 description_gen = DescriptionGenerator()
-analytics_manager = AnalyticsManager()
-queue_manager = QueueManager(max_workers=3)
-hashtag_recommender = HashtagRecommender()
+analytics_manager = AnalyticsManager(_db("analytics.db"))
+queue_manager = QueueManager(db_path=_db("queue.db"), max_workers=3)
+hashtag_recommender = HashtagRecommender(_db("hashtags.db"))
 backup_manager = BackupManager()
 # auth_manager es la instancia compartida de modules.auth (misma que usan
 # las dependencias get_current_user/require_role); se configura con AUTH_ENABLED.

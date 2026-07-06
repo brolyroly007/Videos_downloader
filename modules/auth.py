@@ -457,8 +457,12 @@ class AuthManager:
 security_bearer = HTTPBearer(auto_error=False)
 security_basic = HTTPBasic(auto_error=False)
 
-# Instancia global (se puede configurar desde app.py)
-auth_manager = AuthManager(enabled=os.getenv("AUTH_ENABLED", "false").lower() == "true")
+# Instancia global (se puede configurar desde app.py). La DB vive en DATA_DIR
+# para persistir en Docker (volumen) sin la trampa del bind-mount de archivos.
+auth_manager = AuthManager(
+    db_path=os.path.join(os.getenv("DATA_DIR", "."), "auth.db"),
+    enabled=os.getenv("AUTH_ENABLED", "false").lower() == "true",
+)
 
 
 async def get_current_user(
