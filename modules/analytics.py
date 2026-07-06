@@ -172,11 +172,13 @@ class AnalyticsDatabase:
             json.dumps(video_data.get('hashtags', []))
         ))
 
-        # Registrar evento
-        self._log_event('video_processed', video_id, f"Video procesado: {video_data.get('title', '')[:50]}")
-
         conn.commit()
         conn.close()
+
+        # Registrar evento DESPUÉS de cerrar la conexión: _log_event abre su
+        # propia conexión y si la primera sigue con la transacción abierta se
+        # produce un "database is locked".
+        self._log_event('video_processed', video_id, f"Video procesado: {video_data.get('title', '')[:50]}")
 
         # Actualizar métricas diarias
         self._update_daily_metrics()
@@ -196,12 +198,12 @@ class AnalyticsDatabase:
             WHERE id = ?
         ''', (status, datetime.now().isoformat() if success else None, tiktok_url, error, video_id))
 
-        # Registrar evento
-        event_type = 'video_uploaded' if success else 'upload_failed'
-        self._log_event(event_type, video_id, f"Upload {'exitoso' if success else 'fallido'}: {error or tiktok_url}")
-
         conn.commit()
         conn.close()
+
+        # Registrar evento tras cerrar la conexión (evita "database is locked")
+        event_type = 'video_uploaded' if success else 'upload_failed'
+        self._log_event(event_type, video_id, f"Upload {'exitoso' if success else 'fallido'}: {error or tiktok_url}")
 
         self._update_daily_metrics()
 

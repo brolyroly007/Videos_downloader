@@ -1102,6 +1102,22 @@ async def auto_flow_endpoint(request: AutoFlowRequest, background_tasks: Backgro
 
         tasks_status[task_id]["data"]["description"] = final_description
 
+        # Registrar el video procesado en analytics (alimenta el dashboard)
+        analytics_video_id = None
+        try:
+            analytics_video_id = analytics_manager.track_video_processed({
+                "url": selected_video.url,
+                "platform": "tiktok",
+                "title": selected_video.title,
+                "category": request.category,
+                "viral_score": getattr(selected_video, "predicted_viral_potential", 0),
+                "local_path": processed_path,
+                "description": final_description,
+                "hashtags": selected_video.hashtags,
+            })
+        except Exception as track_err:
+            logger.warning(f"[AutoFlow {task_id}] No se pudo registrar en analytics: {track_err}")
+
         # PASO 5 & 6: Subir a TikTok (si está habilitado)
         if request.auto_upload:
             tasks_status[task_id]["status"] = "uploading"
@@ -1129,10 +1145,28 @@ async def auto_flow_endpoint(request: AutoFlowRequest, background_tasks: Backgro
                     tasks_status[task_id]["progress"] = f"⚠️ Error en upload: {upload_result.get('error')}"
                     logger.error(f"[AutoFlow {task_id}] Upload failed: {upload_result.get('error')}")
 
+                if analytics_video_id:
+                    try:
+                        analytics_manager.track_upload(
+                            analytics_video_id,
+                            tiktok_url=upload_result.get('url'),
+                            success=bool(upload_result.get('success')),
+                            error=upload_result.get('error'),
+                        )
+                    except Exception as track_err:
+                        logger.warning(f"[AutoFlow {task_id}] No se pudo registrar el upload: {track_err}")
+
             except Exception as upload_err:
                 tasks_status[task_id]["status"] = "upload_failed"
                 tasks_status[task_id]["data"]["upload_error"] = str(upload_err)
                 logger.error(f"[AutoFlow {task_id}] Upload error: {upload_err}")
+                if analytics_video_id:
+                    try:
+                        analytics_manager.track_upload(
+                            analytics_video_id, success=False, error=str(upload_err)
+                        )
+                    except Exception:
+                        pass
         else:
             tasks_status[task_id]["status"] = "ready_to_upload"
             tasks_status[task_id]["progress"] = "✅ Video listo para subir manualmente"
@@ -1667,6 +1701,56 @@ async def list_users(_admin=Depends(require_role("admin"))):
         "success": True,
         "users": users
     })
+
+
+# ============================================
+# WIRING DE SERVICIOS EN SEGUNDO PLANO
+# ============================================
+
+async def _queue_processor(job, progress_callback):
+    """Procesa un job de la cola: descarga + procesado (en executor)."""
+    loop = asyncio.get_event_loop()
+    progress_callback(20, "Descargando video...")
+    dl = await loop.run_in_executor(None, lambda: downloader.download(job.url))
+    if not dl.get("success"):
+        raise Exception(dl.get("error", "Descarga fallida"))
+    downloaded = dl.get("filename")
+
+    progress_callback(60, "Procesando video...")
+    output_filename = f"processed_{uuid.uuid4().hex}.mp4"
+    processed = await loop.run_in_executor(
+        None, lambda: processor.process_video(downloaded, output_filename)
+    )
+    return {"downloaded_file": downloaded, "processed_file": processed}
+
+
+@app.on_event("startup")
+async def _startup_services():
+    """Arranca los subsistemas de fondo (antes quedaban sin iniciar)."""
+    # Cola de trabajos: siempre se cablea el procesador; el arranque de los
+    # workers es opt-in para no cambiar el comportamiento por defecto.
+    queue_manager.set_processor(_queue_processor)
+    if os.getenv("ENABLE_QUEUE_WORKERS", "false").lower() == "true":
+        await queue_manager.start()
+        logger.info("Queue workers iniciados")
+
+    # Backups programados: opt-in.
+    if os.getenv("ENABLE_SCHEDULED_BACKUPS", "false").lower() == "true":
+        backup_manager.start_scheduled_backups()
+        logger.info("Backups programados iniciados")
+
+
+@app.on_event("shutdown")
+async def _shutdown_services():
+    """Detiene ordenadamente los subsistemas de fondo."""
+    try:
+        await queue_manager.stop()
+    except Exception as e:
+        logger.warning(f"Error deteniendo la cola: {e}")
+    try:
+        backup_manager.stop_scheduled_backups()
+    except Exception as e:
+        logger.warning(f"Error deteniendo backups programados: {e}")
 
 
 if __name__ == "__main__":
