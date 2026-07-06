@@ -1034,21 +1034,16 @@ async def auto_flow_endpoint(request: AutoFlowRequest, background_tasks: Backgro
             logger.info(f"[AutoFlow {task_id}] Step 3: Processing video...")
 
             try:
-                if video_processor:
-                    process_result = await video_processor.process(
-                        downloaded_path,
-                        remove_watermark=True,
-                        add_effects=False
-                    )
-                    if process_result.get('success'):
-                        processed_path = process_result.get('output_path', downloaded_path)
-                        tasks_status[task_id]["data"]["processed_file"] = processed_path
-                        logger.info(f"[AutoFlow {task_id}] Processed: {processed_path}")
-                    else:
-                        logger.warning(f"[AutoFlow {task_id}] Processing failed, using original")
-                else:
-                    logger.warning(f"[AutoFlow {task_id}] VideoProcessor not available, using original")
+                output_filename = f"processed_{uuid.uuid4().hex}.mp4"
+                loop = asyncio.get_event_loop()
+                processed_path = await loop.run_in_executor(
+                    None,
+                    lambda: processor.process_video(downloaded_path, output_filename)
+                )
+                tasks_status[task_id]["data"]["processed_file"] = processed_path
+                logger.info(f"[AutoFlow {task_id}] Processed: {processed_path}")
             except Exception as proc_err:
+                processed_path = downloaded_path
                 logger.warning(f"[AutoFlow {task_id}] Processing error: {proc_err}, using original")
 
         # PASO 4: Generar descripción viral
