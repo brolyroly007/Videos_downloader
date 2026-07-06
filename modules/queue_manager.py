@@ -120,39 +120,47 @@ class QueueDatabase:
         return job.id
 
     def get_next_job(self, worker_id: str) -> Optional[QueueJob]:
-        """Obtiene el siguiente trabajo disponible (por prioridad)"""
+        """Obtiene el siguiente trabajo disponible (por prioridad).
+
+        La reclamación es a prueba de carreras: si otro worker toma la fila
+        entre el SELECT y el UPDATE, `rowcount` será 0 y se reintenta con la
+        siguiente fila en cola en lugar de devolver un job ya tomado.
+        """
         conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
+            while True:
+                # Obtener trabajo con mayor prioridad que esté en cola
+                cursor.execute('''
+                    SELECT id, url, platform, title, category, priority, status, progress, message,
+                           video_info, options, created_at, started_at, completed_at, result, error, worker_id
+                    FROM jobs
+                    WHERE status = 'queued'
+                    ORDER BY priority DESC, created_at ASC
+                    LIMIT 1
+                ''')
 
-        # Obtener trabajo con mayor prioridad que esté en cola
-        cursor.execute('''
-            SELECT id, url, platform, title, category, priority, status, progress, message,
-                   video_info, options, created_at, started_at, completed_at, result, error, worker_id
-            FROM jobs
-            WHERE status = 'queued'
-            ORDER BY priority DESC, created_at ASC
-            LIMIT 1
-        ''')
+                row = cursor.fetchone()
+                if not row:
+                    return None
 
-        row = cursor.fetchone()
-        if row:
-            # Marcar como tomado
-            cursor.execute('''
-                UPDATE jobs SET status = 'downloading', worker_id = ?, started_at = ?
-                WHERE id = ? AND status = 'queued'
-            ''', (worker_id, datetime.now().isoformat(), row[0]))
-            conn.commit()
+                # Intentar reclamar la fila de forma atómica
+                started_at = datetime.now().isoformat()
+                cursor.execute('''
+                    UPDATE jobs SET status = 'downloading', worker_id = ?, started_at = ?
+                    WHERE id = ? AND status = 'queued'
+                ''', (worker_id, started_at, row[0]))
+                conn.commit()
 
-            job = self._row_to_job(row)
-            job.status = 'downloading'
-            job.worker_id = worker_id
-            job.started_at = datetime.now().isoformat()
-
+                if cursor.rowcount == 1:
+                    job = self._row_to_job(row)
+                    job.status = 'downloading'
+                    job.worker_id = worker_id
+                    job.started_at = started_at
+                    return job
+                # Otro worker la tomó primero; probar con la siguiente
+        finally:
             conn.close()
-            return job
-
-        conn.close()
-        return None
 
     def update_job(self, job_id: str, status: str = None, progress: int = None,
                    message: str = None, result: Dict = None, error: str = None):
